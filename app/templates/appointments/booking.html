@@ -1,0 +1,817 @@
+{% extends "base.html" %}
+
+{% block title %}Book Doctor Appointment — DNAura{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ==========================================================================
+   DNAura Unified Design System — Doctor Appointment Booking
+   Fully matching DNAura Platform: Clean Biotech aesthetic,
+   border-color, text-main, bg-card, and light/dark theme responsiveness.
+   ========================================================================== */
+
+.booking-header-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+}
+
+.booking-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.booking-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    letter-spacing: -0.2px;
+}
+
+.booking-card-header i {
+    color: var(--primary);
+    font-size: 1.15rem;
+}
+
+/* Doctor Profile Card */
+.doc-avatar-large {
+    width: 58px;
+    height: 58px;
+    border-radius: 14px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.badge-specialty-pill {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.fee-highlight-box {
+    background: var(--primary-light);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+/* Time Slot Buttons */
+.slot-btn {
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 0.55rem 0.95rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    color: var(--text-main);
+    transition: all 0.15s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.slot-btn:hover:not(:disabled) {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.slot-btn.selected-slot {
+    background: linear-gradient(135deg, var(--primary), var(--secondary, var(--primary))) !important;
+    border-color: var(--primary) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(23, 105, 170, 0.28);
+}
+
+.slot-booked {
+    background: var(--bg-surface-elevated, #F1F5F9) !important;
+    border: 1px dashed var(--border-color) !important;
+    color: var(--text-muted) !important;
+    text-decoration: line-through;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+/* Recommended Best Slot Banner */
+.best-slot-banner {
+    background: var(--primary-light);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Doctor Selection Cards (Step 1 when no doctor chosen) */
+.doctor-selection-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.doctor-selection-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(23, 105, 170, 0.1) !important;
+    border-color: var(--primary);
+}
+
+/* Form Controls Harmonization */
+.form-control, .form-select {
+    background-color: var(--input-bg, #FFFFFF);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 8px;
+    padding: 0.65rem 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--input-bg, #FFFFFF);
+    border-color: var(--primary);
+    color: var(--text-main);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.modal-content {
+    background: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-color) !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<span data-i18n="doc_book_title" id="page-i18n-title" style="display:none;"></span>
+
+<div class="container-fluid px-0">
+    <!-- Top Navigation & Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <a class="text-decoration-none small fw-semibold mb-2 d-inline-flex align-items-center gap-1.5" href="{{ url_for('hospitals.index') }}" style="color: var(--primary);">
+                <i class="bi bi-arrow-left"></i> <span>Back to Hospitals &amp; Doctors</span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <div class="booking-header-icon shadow-sm">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+                <div>
+                    <h2 class="fw-bold mb-0" style="color: var(--text-main); font-size: 1.65rem;">
+                        Book Doctor Appointment
+                    </h2>
+                    {% if hospital %}
+                    <p class="small mb-0" style="color: var(--text-secondary);">
+                        <i class="bi bi-hospital me-1" style="color: var(--primary);"></i>{{ hospital.name }} &mdash; {{ hospital.city }}{% if hospital.state %}, {{ hospital.state }}{% endif %}
+                    </p>
+                    {% else %}
+                    <p class="small mb-0" style="color: var(--text-secondary);">
+                        Schedule a confirmed consultation with certified healthcare specialists
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            {% if doctor %}
+            <a href="{{ url_for('appointments.book', hospital_id=hospital.id if hospital else doctor.hospital_id) }}" class="btn btn-outline-custom btn-sm px-3 py-2">
+                <i class="bi bi-arrow-left-right me-1"></i> Change Specialist
+            </a>
+            {% endif %}
+            <a href="{{ url_for('appointments.my_appointments') }}" class="btn btn-outline-custom btn-sm px-3 py-2">
+                <i class="bi bi-journal-check me-1"></i> My Appointments
+            </a>
+        </div>
+    </div>
+
+    {% if not doctor %}
+    <!-- ========================================================= -->
+    <!-- VIEW A: SELECT A MEDICAL SPECIALIST                       -->
+    <!-- ========================================================= -->
+    <div class="card border-0 shadow-sm p-4 mb-4" style="background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border-color); border-left: 4px solid var(--primary) !important;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <h5 class="fw-bold mb-1" style="color: var(--text-main);">
+                    Select a Specialist for Consultation
+                </h5>
+                <p class="small mb-0" style="color: var(--text-secondary);">
+                    Browse hospital faculty, check consultation fees, and schedule an appointment.
+                </p>
+            </div>
+            <span class="badge px-3 py-2 fw-semibold" style="background: var(--primary-light); color: var(--primary); border: 1px solid var(--border-color); border-radius: 20px;">
+                <i class="bi bi-people-fill me-1"></i> {{ doctors|length }} Specialists Available
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        {% if doctors %}
+            {% for doc in doctors %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card p-4 doctor-selection-card h-100 shadow-sm">
+                    <div class="d-flex flex-column h-100 justify-content-between">
+                        <div>
+                            <!-- Doctor Header -->
+                            <div class="d-flex align-items-start gap-3 mb-3">
+                                <div class="doc-avatar-large shadow-sm">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="fw-bold mb-1" style="color: var(--text-main); font-size: 1.12rem;">
+                                        {{ doc.full_name }}
+                                    </h5>
+                                    <span class="badge-specialty-pill">
+                                        <i class="bi bi-patch-check-fill"></i> {{ doc.specialty }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Hospital & Location -->
+                            <div class="mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                                <div class="fw-semibold small mb-1" style="color: var(--text-main);">
+                                    <i class="bi bi-building me-1" style="color: var(--primary);"></i>{{ hospital.name if hospital else doc.hospital_name }}
+                                </div>
+                                <div class="small" style="color: var(--text-secondary);">
+                                    <i class="bi bi-geo-alt me-1" style="color: #D97706;"></i>{{ hospital.city if hospital else doc.hospital_city }}{% if (hospital and hospital.state) or doc.hospital_state %}, {{ hospital.state if hospital else doc.hospital_state }}{% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Credentials & Availability -->
+                            <div class="mb-3 small">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span style="color: var(--text-secondary);">Qualification:</span>
+                                    <span class="fw-medium text-end ms-2" style="color: var(--text-main);">{{ doc.qualification_short or doc.qualification }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span style="color: var(--text-secondary);">Experience:</span>
+                                    <span class="fw-medium" style="color: var(--text-main);">{{ doc.experience_years }} years</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2 align-items-center">
+                                    <span style="color: var(--text-secondary);">Available:</span>
+                                    <span class="badge px-2 py-1" style="background: var(--bg-surface-elevated); color: var(--text-secondary); border: 1px solid var(--border-color);">
+                                        <i class="bi bi-calendar3 me-1"></i>{{ doc.availability_days }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top" style="border-color: var(--border-color) !important;">
+                                    <span style="color: var(--text-secondary);">Consultation Fee:</span>
+                                    <span class="fw-bold" style="color: #15803D; font-size: 0.98rem;">
+                                        {% if doc.consultation_fee %}
+                                            ₹{{ doc.consultation_fee }} per visit
+                                        {% else %}
+                                            <span class="text-muted fw-normal small">Fee not available</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 pt-2 mt-auto">
+                            <button type="button" class="btn btn-outline-custom btn-sm px-3 py-2 flex-grow-1" data-bs-toggle="modal" data-bs-target="#profileModal{{ doc.id }}">
+                                <i class="bi bi-person-badge me-1"></i> Profile
+                            </button>
+                            <a class="btn btn-primary-gradient btn-sm px-3 py-2 flex-grow-1 text-center" href="{{ url_for('appointments.book', hospital_id=hospital.id if hospital else doc.hospital_id, doctor_id=doc.id) }}">
+                                <i class="bi bi-calendar-plus me-1"></i> Book
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFILE MODAL -->
+                <div class="modal fade" id="profileModal{{ doc.id }}" tabindex="-1" aria-labelledby="profileModalLabel{{ doc.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow" style="border-radius: 14px;">
+                            <div class="modal-header border-0 pb-0">
+                                <h5 class="modal-title fw-bold" id="profileModalLabel{{ doc.id }}" style="color: var(--text-main);">
+                                    Doctor Profile
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body pt-3">
+                                <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                                    <div class="doc-avatar-large">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold mb-0" style="color: var(--text-main);">{{ doc.full_name }}</h5>
+                                        <span class="badge-specialty-pill mt-1">{{ doc.specialty }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-secondary);">Hospital</div>
+                                    <div class="fw-medium" style="color: var(--text-main);">{{ hospital.name if hospital else doc.hospital_name }}</div>
+                                    <div class="small" style="color: var(--text-secondary);"><i class="bi bi-geo-alt me-1" style="color: #D97706;"></i>{{ hospital.city if hospital else doc.hospital_city }}{% if (hospital and hospital.state) or doc.hospital_state %}, {{ hospital.state if hospital else doc.hospital_state }}{% endif %}</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-secondary);">Qualification &amp; Experience</div>
+                                    <div class="fw-medium" style="color: var(--text-main);">{{ doc.qualification }}</div>
+                                    <div class="small" style="color: var(--text-secondary);">{{ doc.experience_years }} years clinical experience</div>
+                                </div>
+
+                                {% if doc.bio %}
+                                <div class="mb-3">
+                                    <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-secondary);">About Specialist</div>
+                                    <p class="small mb-0" style="color: var(--text-main); line-height: 1.5;">{{ doc.bio }}</p>
+                                </div>
+                                {% endif %}
+
+                                <div class="fee-highlight-box mb-3">
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span style="color: var(--text-secondary);">Available Days:</span>
+                                        <span class="fw-semibold" style="color: var(--text-main);">{{ doc.availability_days }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span style="color: var(--text-secondary);">Available Hours:</span>
+                                        <span class="fw-semibold" style="color: var(--text-main);">{{ doc.availability_time }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between small">
+                                        <span style="color: var(--text-secondary);">Consultation Fee:</span>
+                                        <span class="fw-bold" style="color: #15803D;">
+                                            {% if doc.consultation_fee %}₹{{ doc.consultation_fee }} per visit{% else %}Fee not available{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                                <a class="btn btn-primary-gradient px-4" href="{{ url_for('appointments.book', hospital_id=hospital.id if hospital else doc.hospital_id, doctor_id=doc.id) }}">
+                                    <i class="bi bi-calendar-check me-1"></i> Book Appointment
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-person-x fs-1 text-muted mb-3 d-block"></i>
+                <h5 class="fw-bold" style="color: var(--text-main);">No Doctor Profiles Available</h5>
+                <p class="small" style="color: var(--text-secondary);">No medical specialists currently registered for this hospital.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <!-- ========================================================= -->
+    <!-- VIEW B: 2-COLUMN UNIFIED BOOKING EXPERIENCE               -->
+    <!-- ========================================================= -->
+    <form action="{{ url_for('appointments.book') }}" method="POST" id="bookingForm">
+        <input type="hidden" name="hospital_id" value="{{ hospital.id if hospital else doctor.hospital_id }}"/>
+        <input type="hidden" name="doctor_id" value="{{ doctor.id }}"/>
+        <input type="hidden" name="patient_email" value="{{ user.email|default('') }}"/>
+        <input type="hidden" name="appointment_time" id="selectedTimeSlotInput" required/>
+
+        <div class="row g-4 mb-5">
+            <!-- ------------------------------------------------ -->
+            <!-- LEFT COLUMN: SPECIALIST & HOSPITAL PROFILE CARD  -->
+            <!-- ------------------------------------------------ -->
+            <div class="col-12 col-lg-4 col-xl-4">
+                <div class="card booking-card p-4 h-100 shadow-sm position-sticky" style="top: 85px;">
+                    <div class="booking-card-header">
+                        <i class="bi bi-person-badge"></i> SPECIALIST PROFILE
+                    </div>
+
+                    <!-- Doctor Avatar & Name -->
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <div class="doc-avatar-large shadow-sm">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h4 class="fw-bold mb-1" style="color: var(--text-main); font-size: 1.25rem;">
+                                {{ doctor.full_name }}
+                            </h4>
+                            <span class="badge-specialty-pill">
+                                <i class="bi bi-patch-check-fill"></i> {{ doctor.specialty }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Hospital Info -->
+                    <div class="mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                        <div class="small fw-semibold text-uppercase mb-1" style="letter-spacing: 0.5px; color: var(--text-secondary);">
+                            Hospital / Clinic
+                        </div>
+                        <div class="fw-bold" style="color: var(--text-main);">
+                            <i class="bi bi-hospital me-1" style="color: var(--primary);"></i>{{ hospital.name if hospital else doctor.hospital_name }}
+                        </div>
+                        <div class="small mt-1" style="color: var(--text-secondary);">
+                            <i class="bi bi-geo-alt me-1" style="color: #D97706;"></i>{{ hospital.city if hospital else doctor.hospital_city }}{% if (hospital and hospital.state) or doctor.hospital_state %}, {{ hospital.state if hospital else doctor.hospital_state }}{% endif %}
+                        </div>
+                        {% if hospital and hospital.address %}
+                        <div class="small text-muted mt-1" style="font-size: 0.8rem;">
+                            {{ hospital.address }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Credentials -->
+                    <div class="mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                        <div class="small fw-semibold text-uppercase mb-2" style="letter-spacing: 0.5px; color: var(--text-secondary);">
+                            Credentials
+                        </div>
+                        <div class="d-flex justify-content-between small mb-1.5">
+                            <span style="color: var(--text-secondary);">Qualification:</span>
+                            <span class="fw-semibold text-end" style="color: var(--text-main);">{{ doctor.qualification_short or doctor.qualification }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small">
+                            <span style="color: var(--text-secondary);">Experience:</span>
+                            <span class="fw-semibold" style="color: var(--text-main);">{{ doctor.experience_years }} years clinical</span>
+                        </div>
+                    </div>
+
+                    <!-- Availability Schedule -->
+                    <div class="mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                        <div class="small fw-semibold text-uppercase mb-2" style="letter-spacing: 0.5px; color: var(--text-secondary);">
+                            Schedule
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-1.5 small">
+                            <i class="bi bi-calendar3" style="color: var(--primary);"></i>
+                            <span style="color: var(--text-secondary);">Days:</span>
+                            <strong style="color: var(--text-main);">{{ doctor.availability_days }}</strong>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 small">
+                            <i class="bi bi-clock" style="color: var(--primary);"></i>
+                            <span style="color: var(--text-secondary);">Hours:</span>
+                            <strong style="color: var(--text-main);">{{ doctor.availability_time }}</strong>
+                        </div>
+                    </div>
+
+                    <!-- Fee Box -->
+                    <div class="fee-highlight-box mt-auto">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="small fw-bold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-secondary); font-size: 0.75rem;">
+                                    Consultation Fee
+                                </div>
+                                <div class="small text-muted" style="font-size: 0.78rem;">
+                                    Standard clinic visit
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-bold fs-5" style="color: #15803D;">
+                                    {% if doctor.consultation_fee %}
+                                        ₹{{ doctor.consultation_fee }}
+                                    {% else %}
+                                        <span class="fs-6 text-muted fw-normal">N/A</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ------------------------------------------------ -->
+            <!-- RIGHT COLUMN: INTERACTIVE BOOKING STEPS          -->
+            <!-- ------------------------------------------------ -->
+            <div class="col-12 col-lg-8 col-xl-8">
+                <!-- STEP 1: DATE & SLOT SELECTION -->
+                <div class="card booking-card p-4 mb-4 shadow-sm">
+                    <div class="booking-card-header">
+                        <i class="bi bi-clock-history"></i> 1. SELECT CONSULTATION DATE &amp; TIME SLOT
+                    </div>
+
+                    <!-- Date Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold mb-1" for="appointmentDateInput" style="color: var(--text-main);">
+                            Consultation Date <span class="text-danger">*</span>
+                        </label>
+                        <p class="small mb-2" style="color: var(--text-secondary);">
+                            Specialist is active on: <strong>{{ doctor.availability_days }}</strong>
+                        </p>
+                        <input class="form-control form-control-lg fs-6" id="appointmentDateInput" name="appointment_date" required type="date" min="{{ today_str }}" value="{{ today_str }}"/>
+                    </div>
+
+                    <!-- Unavailable Day Alert -->
+                    <div id="unavailableDayAlert" class="alert alert-warning py-3 px-3 d-none mb-4 shadow-sm" style="border-radius: 12px; border: 1px solid #FFE082;">
+                        <div class="d-flex align-items-start gap-2.5">
+                            <i class="bi bi-exclamation-triangle-fill text-warning fs-5 flex-shrink-0 mt-0.5"></i>
+                            <div>
+                                <strong class="d-block" id="unavailableDayTitle" style="color: var(--text-main);">Specialist Not Available on this Day</strong>
+                                <span class="small" id="unavailableDayMessage" style="color: var(--text-secondary);"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommended Best Slot Banner -->
+                    <div id="recommendedSlotCard" class="best-slot-banner d-none mb-4">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <div class="small fw-bold text-uppercase d-flex align-items-center gap-1.5" style="letter-spacing: 0.5px; color: var(--primary);">
+                                    <i class="bi bi-star-fill text-warning"></i> RECOMMENDED EARLIEST SLOT
+                                </div>
+                                <div class="fw-bold fs-6 mt-1" id="recommendedSlotDisplay" style="color: var(--text-main);">
+                                    --
+                                </div>
+                                <div class="small" id="recommendedSlotReason" style="color: var(--text-secondary);">
+                                    --
+                                </div>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-primary-gradient btn-sm px-3 py-2 shadow-sm" id="btnSelectRecommended">
+                                    <i class="bi bi-check2-circle me-1"></i> Select Best Slot
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Available Time Slots -->
+                    <div class="mb-2" id="timeSlotsSection">
+                        <div class="d-flex justify-content-between align-items-center mb-2.5">
+                            <label class="form-label fw-bold mb-0" style="color: var(--text-main);">
+                                Available Time Slots <span class="text-danger">*</span>
+                            </label>
+                            <span class="badge px-2.5 py-1" id="slotCountLabel" style="background: var(--bg-surface-elevated); color: var(--text-secondary); border: 1px solid var(--border-color); font-weight: 600;">
+                                Select a time
+                            </span>
+                        </div>
+
+                        <div id="slotsContainer" class="d-flex flex-wrap gap-2 pt-1 pb-1">
+                            <div class="small py-2" style="color: var(--text-secondary);">
+                                <span class="spinner-border spinner-border-sm me-1 text-primary" role="status"></span>
+                                Loading available consultation slots...
+                            </div>
+                        </div>
+                        <div id="slotSelectionError" class="text-danger small mt-2 d-none">
+                            <i class="bi bi-exclamation-circle-fill me-1"></i> Please choose a consultation slot time to proceed.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: PATIENT & CONTACT DETAILS -->
+                <div class="card booking-card p-4 mb-4 shadow-sm">
+                    <div class="booking-card-header">
+                        <i class="bi bi-person-lines-fill"></i> 2. PATIENT &amp; CONTACT INFORMATION
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold" style="color: var(--text-main);">
+                                Patient Full Name <span class="text-danger">*</span>
+                            </label>
+                            <input class="form-control" name="patient_name" required type="text" value="{{ user.full_name }}" placeholder="Full legal name"/>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold" style="color: var(--text-main);">
+                                Contact Phone Number <span class="text-danger">*</span>
+                            </label>
+                            <input class="form-control" name="phone" placeholder="+91 98765 43210" required type="tel" value="{{ user.phone|default('') }}"/>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold" style="color: var(--text-main);">
+                            Reason for Visit <span class="text-danger">*</span>
+                        </label>
+                        <input class="form-control" name="reason_for_visit" placeholder="e.g. Oncology consultation, genetic evaluation, second opinion" required type="text"/>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label small fw-bold" style="color: var(--text-main);">
+                            Additional Notes (Optional)
+                        </label>
+                        <textarea class="form-control" name="notes" placeholder="Any medical symptoms, past reports, or assistance requested..." rows="2"></textarea>
+                    </div>
+                </div>
+
+                <!-- STEP 3: BOOKING SUMMARY & SUBMIT BUTTON -->
+                <div class="card booking-card p-4 mb-4 shadow-sm" style="border-left: 4px solid var(--primary) !important;">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div>
+                            <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-secondary);">
+                                Summary of Booking
+                            </div>
+                            <div class="fw-bold fs-6 mt-0.5" id="summarySelectedSlotDisplay" style="color: var(--text-main);">
+                                <span class="text-muted fw-normal">Select a date and time slot above</span>
+                            </div>
+                            <div class="small" style="color: var(--text-secondary);">
+                                {{ doctor.full_name }} &bull; {{ hospital.name if hospital else doctor.hospital_name }}
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-outline-custom px-4 py-2.5 fw-medium" href="{{ url_for('appointments.book', hospital_id=hospital.id if hospital else doctor.hospital_id) }}">
+                                Cancel
+                            </a>
+                            <button class="btn btn-primary-gradient px-4 py-2.5 fw-bold fs-6 shadow-sm" id="btnConfirmAppt" type="submit">
+                                <i class="bi bi-check2-circle me-1.5 fs-5"></i> Confirm Appointment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if doctor %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const doctorId = {{ doctor.id }};
+    const dateInput = document.getElementById('appointmentDateInput');
+    const timeInput = document.getElementById('selectedTimeSlotInput');
+    const slotsContainer = document.getElementById('slotsContainer');
+    const unavailableAlert = document.getElementById('unavailableDayAlert');
+    const unavailableTitle = document.getElementById('unavailableDayTitle');
+    const unavailableMsg = document.getElementById('unavailableDayMessage');
+    const recommendedCard = document.getElementById('recommendedSlotCard');
+    const recommendedDisplay = document.getElementById('recommendedSlotDisplay');
+    const recommendedReason = document.getElementById('recommendedSlotReason');
+    const btnSelectRecommended = document.getElementById('btnSelectRecommended');
+    const slotCountLabel = document.getElementById('slotCountLabel');
+    const slotSelectionError = document.getElementById('slotSelectionError');
+    const bookingForm = document.getElementById('bookingForm');
+    const summarySlotDisplay = document.getElementById('summarySelectedSlotDisplay');
+
+    let currentRecommendedSlot = null;
+    let selectedDateFormatted = '';
+
+    function updateSummaryDisplay(slotTime) {
+        if (!summarySlotDisplay) return;
+        if (slotTime && dateInput.value) {
+            summarySlotDisplay.innerHTML = `<span style="color: var(--primary);"><i class="bi bi-check-circle-fill me-1"></i>${dateInput.value} at ${slotTime}</span>`;
+        } else {
+            summarySlotDisplay.innerHTML = '<span class="text-muted fw-normal">Please select a time slot above</span>';
+        }
+    }
+
+    function fetchDoctorAvailability(selectedDate) {
+        slotsContainer.innerHTML = `
+            <div class="small py-2" style="color: var(--text-secondary);">
+                <span class="spinner-border spinner-border-sm me-1 text-primary" role="status"></span>
+                Checking available consultation slots for ${selectedDate}...
+            </div>
+        `;
+        timeInput.value = '';
+        updateSummaryDisplay('');
+        recommendedCard.classList.add('d-none');
+        unavailableAlert.classList.add('d-none');
+        slotSelectionError.classList.add('d-none');
+
+        const url = `/appointments/api/doctor-availability?doctor_id=${doctorId}&date=${encodeURIComponent(selectedDate)}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    unavailableAlert.classList.remove('d-none');
+                    unavailableTitle.innerText = "Date Selection Unavailable";
+                    unavailableMsg.innerText = data.error || "Unable to retrieve doctor schedule.";
+                    slotsContainer.innerHTML = '<div class="small" style="color: var(--text-secondary);">No slots available.</div>';
+                    return;
+                }
+
+                if (data.date && dateInput.value !== data.date) {
+                    dateInput.value = data.date;
+                }
+                selectedDateFormatted = data.formatted_date || data.date;
+
+                const docName = (data.doctor_name || '').startsWith('Dr') ? data.doctor_name : ('Dr. ' + (data.doctor_name || ''));
+
+                if (!data.is_day_available) {
+                    unavailableAlert.classList.remove('d-none');
+                    unavailableTitle.innerText = `${docName} is not scheduled on ${data.weekday}s`;
+                    unavailableMsg.innerText = `Consultation days are: ${data.availability_days}. Please choose an available weekday from the calendar.`;
+                    slotsContainer.innerHTML = `
+                        <div class="small py-2" style="color: var(--text-secondary);">
+                            <i class="bi bi-calendar-x me-1"></i>No consultation slots scheduled for ${data.weekday}.
+                        </div>
+                    `;
+                    slotCountLabel.innerText = "0 slots";
+                    return;
+                }
+
+                unavailableAlert.classList.add('d-none');
+                const allSlots = data.all_day_slots || [];
+                const bookedSlots = new Set(data.booked_slots || []);
+                const availableSlots = data.available_slots || [];
+
+                slotCountLabel.innerText = `${availableSlots.length} available / ${allSlots.length} total`;
+
+                if (allSlots.length === 0) {
+                    slotsContainer.innerHTML = '<div class="small" style="color: var(--text-secondary);">No slots configured for this day.</div>';
+                    return;
+                }
+
+                let html = '';
+                allSlots.forEach(slot => {
+                    const isBooked = bookedSlots.has(slot);
+                    if (isBooked) {
+                        html += `
+                            <button type="button" class="btn btn-sm slot-btn slot-booked" disabled title="Already booked">
+                                <i class="bi bi-slash-circle me-1"></i>${slot} <span class="badge bg-secondary ms-1">Booked</span>
+                            </button>
+                        `;
+                    } else {
+                        html += `
+                            <button type="button" class="btn btn-sm slot-btn available-slot-btn" data-slot="${slot}">
+                                <i class="bi bi-clock me-1"></i>${slot}
+                            </button>
+                        `;
+                    }
+                });
+                slotsContainer.innerHTML = html;
+
+                document.querySelectorAll('.available-slot-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const slot = this.getAttribute('data-slot');
+                        selectSlot(slot, this);
+                    });
+                });
+
+                if (data.recommended_slot) {
+                    currentRecommendedSlot = data.recommended_slot.slot;
+                    recommendedDisplay.innerText = data.recommended_slot.display;
+                    recommendedReason.innerText = data.recommended_slot.reason;
+                    recommendedCard.classList.remove('d-none');
+
+                    if (!timeInput.value && availableSlots.length > 0) {
+                        const firstBtn = document.querySelector(`.available-slot-btn[data-slot="${availableSlots[0]}"]`);
+                        if (firstBtn) {
+                            selectSlot(availableSlots[0], firstBtn);
+                        }
+                    }
+                } else {
+                    recommendedCard.classList.add('d-none');
+                }
+            })
+            .catch(err => {
+                console.error("Availability fetch error:", err);
+                slotsContainer.innerHTML = '<div class="text-danger small">Error loading doctor availability. Please refresh and try again.</div>';
+            });
+    }
+
+    function selectSlot(slot, btnElement) {
+        document.querySelectorAll('.available-slot-btn').forEach(b => {
+            b.classList.remove('selected-slot');
+        });
+        if (btnElement) {
+            btnElement.classList.add('selected-slot');
+        }
+        timeInput.value = slot;
+        updateSummaryDisplay(slot);
+        slotSelectionError.classList.add('d-none');
+    }
+
+    btnSelectRecommended.addEventListener('click', function() {
+        if (currentRecommendedSlot) {
+            const targetBtn = document.querySelector(`.available-slot-btn[data-slot="${currentRecommendedSlot}"]`);
+            if (targetBtn) {
+                selectSlot(currentRecommendedSlot, targetBtn);
+            }
+        }
+    });
+
+    dateInput.addEventListener('change', function() {
+        if (this.value) {
+            fetchDoctorAvailability(this.value);
+        }
+    });
+
+    bookingForm.addEventListener('submit', function(e) {
+        if (!timeInput.value) {
+            e.preventDefault();
+            slotSelectionError.classList.remove('d-none');
+            slotsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+    });
+
+    fetchDoctorAvailability(dateInput.value);
+});
+</script>
+{% endif %}
+{% endblock %}

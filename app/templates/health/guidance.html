@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+
+{% block title %}AI Health &amp; Wellness Guidance — DNAura{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/health.css') }}" rel="stylesheet"/>
+{% endblock %}
+
+{% block content %}
+<!-- Loading Overlay for Health Guidance (kept hidden) -->
+<div id="health-loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
+    <div class="spinner-border text-emerald" style="width: 3rem; height: 3rem;" role="status"></div>
+    <h4 class="mt-3 brand-font text-dark" data-i18n="health_loading_msg">AI is generating your wellness guidance...</h4>
+    <p class="text-secondary small" data-i18n="health_loading_sub">AI is generating fast tailored recommendations...</p>
+</div>
+
+<div id="health-guidance-module-area">
+<span data-i18n="health_page_title" id="page-i18n-title" style="display:none;"></span>
+<div class="container-fluid px-4 py-4">
+<!-- Header -->
+<div class="mb-4">
+<h2 class="fw-bold brand-font text-dark mb-1">
+<i class="bi bi-heart-pulse-fill text-emerald me-2"></i><span data-i18n="sidebar_ai_guidance">AI Health &amp; Wellness Guidance</span>
+</h2>
+<p class="text-secondary small mb-0" data-i18n="health_sub">Multilingual wellness suggestions, nutritional advice, lifestyle tips, and exercise recommendations</p>
+</div>
+<div class="row g-4" id="health-guidance-container">
+<!-- FORM CARD -->
+<div class="col-lg-5">
+<div class="card guidance-card-light border-0 p-4 h-100">
+<h5 class="fw-bold text-dark mb-3 brand-font"><i class="bi bi-chat-left-heart guidance-heading-cyan me-2"></i><span data-i18n="health_desc_title">Describe Your Health Concern</span></h5>
+<form action="{{ url_for('health_guidance.index') }}" id="health-guidance-form" method="POST">
+<div class="mb-3">
+<label class="form-label text-secondary small fw-medium" data-i18n="health_lang_label">Select Language</label>
+<select class="form-select form-control-custom health-lang-select" id="health-lang-select" name="language">
+
+  <option value="en" {% if language == 'en' %}selected{% endif %}>English</option>
+  <option value="hi" {% if language == 'hi' %}selected{% endif %}>हिन्दी</option>
+  <option value="kn" {% if language == 'kn' %}selected{% endif %}>ಕನ್ನಡ</option>
+  <option value="ta" {% if language == 'ta' %}selected{% endif %}>தமிழ்</option>
+  <option value="te" {% if language == 'te' %}selected{% endif %}>తెలుగు</option>
+
+</select>
+</div>
+<div class="mb-3">
+<div class="d-flex justify-content-between align-items-center mb-1">
+<label class="form-label text-secondary small fw-medium mb-0" data-i18n="health_goal_label">Health Goal or Problem</label>
+<button class="btn btn-sm btn-outline-emerald py-0 px-2 style-btn-voice" id="btn-health-speak" type="button">
+<i class="bi bi-mic-fill me-1"></i> <span data-i18n="health_speak_btn" id="health-mic-text">Speak Problem</span>
+</button>
+</div>
+<textarea class="form-control form-control-custom" data-i18n-placeholder="health_problem_ph" id="health-problem-input" name="health_problem" placeholder="e.g. 'I feel tired frequently', 'I want a diet for better energy', or 'I want to improve my fitness.'" required="" rows="4">{{ problem }}</textarea>
+<small class="text-muted small" id="health-mic-status"></small>
+</div>
+<!-- Quick Sample Prompts -->
+<div class="mb-4">
+<span class="text-secondary small d-block mb-2" data-i18n="health_sample_goals">Try sample goals:</span>
+<div class="d-flex flex-wrap gap-2">
+<button class="btn btn-sm sample-prompt-btn" data-i18n="health_sample1" data-sample-key="health_sample1_text" data-text="I feel tired frequently during the day" type="button">"Feel tired frequently"</button>
+<button class="btn btn-sm sample-prompt-btn" data-i18n="health_sample2" data-sample-key="health_sample2_text" data-text="I want a diet for better energy and focus" type="button">"Diet for better energy"</button>
+<button class="btn btn-sm sample-prompt-btn" data-i18n="health_sample3" data-sample-key="health_sample3_text" data-text="I want to improve my overall fitness and strength" type="button">"Improve fitness"</button>
+</div>
+</div>
+<button class="btn btn-primary-gradient w-100 py-2 fs-6 fw-bold shadow-md" id="btn-health-submit" type="submit">
+<i class="bi bi-stars me-1"></i> <span data-i18n="health_gen_btn">Generate Wellness Guidance</span>
+</button>
+</form>
+</div>
+</div>
+<!-- RESULTS DISPLAY CARD -->
+<div class="col-lg-7">
+<div class="card guidance-card-light border-0 p-4 h-100" id="guidance-results-card">
+                {% if guidance %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+<h5 class="fw-bold text-dark mb-0 brand-font"><i class="bi bi-lightbulb-fill text-warning me-2"></i>{{ guidance.title }}</h5>
+<button class="btn btn-sm btn-outline-cyan px-3 py-1 fw-semibold" id="btn-health-listen" type="button">
+<i class="bi bi-volume-up-fill me-1"></i> <span data-i18n="chat_listen_btn">Listen to Guidance</span>
+</button>
+</div>
+<!-- Structured Guidance Sections -->
+<div class="guidance-results-body">
+<!-- General Wellness -->
+<div class="guidance-section-light mb-4">
+<h6 class="guidance-heading-emerald fw-bold mb-2"><i class="bi bi-heart-pulse-fill me-2"></i><span data-i18n="health_gen_well">General Wellness Overview</span></h6>
+<p class="text-high-contrast mb-0 fs-6 leading-relaxed">{{ guidance.general_wellness }}</p>
+</div>
+<div class="row g-3 mb-3">
+<!-- Healthy Foods -->
+<div class="col-md-6">
+<div class="guidance-section-light h-100">
+<h6 class="guidance-heading-cyan fw-bold mb-3"><i class="bi bi-basket-fill me-2"></i><span data-i18n="health_foods">Suggested Healthy Foods</span></h6>
+<ul class="guidance-list">
+                                    {% for food in guidance.healthy_foods %}
+                                    <li class="guidance-list-item"><i class="bi bi-check-circle-fill text-cyan guidance-icon"></i><span>{{ food }}</span></li>
+                                    {% endfor %}
+                                </ul>
+</div>
+</div>
+<!-- Diet Considerations -->
+<div class="col-md-6">
+<div class="guidance-section-light h-100">
+<h6 class="guidance-heading-warning fw-bold mb-3"><i class="bi bi-egg-fried me-2"></i><span data-i18n="health_diet">Diet Considerations</span></h6>
+<ul class="guidance-list">
+                                    {% for diet in guidance.diet_considerations %}
+                                    <li class="guidance-list-item"><i class="bi bi-check-circle-fill text-warning guidance-icon"></i><span>{{ diet }}</span></li>
+                                    {% endfor %}
+                                </ul>
+</div>
+</div>
+</div>
+<div class="row g-3">
+<!-- Exercise Suggestions -->
+<div class="col-md-6">
+<div class="guidance-section-light h-100">
+<h6 class="guidance-heading-purple fw-bold mb-3"><i class="bi bi-activity me-2"></i><span data-i18n="health_exercise">Exercise Suggestions</span></h6>
+<ul class="guidance-list">
+                                    {% for ex in guidance.exercise_suggestions %}
+                                    <li class="guidance-list-item"><i class="bi bi-check-circle-fill text-purple guidance-icon"></i><span>{{ ex }}</span></li>
+                                    {% endfor %}
+                                </ul>
+</div>
+</div>
+<!-- Lifestyle Recommendations -->
+<div class="col-md-6">
+<div class="guidance-section-light h-100">
+<h6 class="guidance-heading-emerald fw-bold mb-3"><i class="bi bi-sun-fill me-2"></i><span data-i18n="health_lifestyle">Lifestyle Recommendations</span></h6>
+<ul class="guidance-list">
+                                    {% for ls in guidance.lifestyle_recommendations %}
+                                    <li class="guidance-list-item"><i class="bi bi-check-circle-fill text-emerald guidance-icon"></i><span>{{ ls }}</span></li>
+                                    {% endfor %}
+                                </ul>
+</div>
+</div>
+</div>
+</div>
+
+                {% else %}
+                <div class="text-center py-5 my-auto" id="guidance-empty-state">
+<i class="bi bi-heart-pulse fs-1 text-secondary opacity-50 mb-3 d-block"></i>
+<h5 class="text-dark" data-i18n="health_engine_ready">AI Health Guidance Engine Ready</h5>
+<p class="text-secondary small" data-i18n="health_engine_desc">Enter your health goal or concern on the left to receive personalized wellness tips in your chosen language.</p>
+</div>
+                {% endif %}
+            </div>
+</div>
+</div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const speakBtn = document.getElementById("btn-health-speak");
+    let listenBtn = document.getElementById("btn-health-listen");
+    const problemInput = document.getElementById("health-problem-input");
+    const langSelect = document.getElementById("health-lang-select");
+    const micStatus = document.getElementById("health-mic-status");
+    const micText = document.getElementById("health-mic-text");
+    const form = document.getElementById("health-guidance-form");
+    const resultsCard = document.getElementById("guidance-results-card");
+    let currentGuidanceData = {{ guidance|tojson|safe if guidance else 'null' }};
+
+    function getText(key, fallback, lang) {
+        const activeLang = lang || (langSelect ? langSelect.value : ((window.LanguageManager && window.LanguageManager.getLanguage) ? window.LanguageManager.getLanguage() : 'en'));
+        if (window.LanguageManager && typeof window.LanguageManager.getText === 'function') {
+            return window.LanguageManager.getText(key, fallback, activeLang);
+        }
+        if (window.TRANSLATIONS && window.TRANSLATIONS[activeLang] && window.TRANSLATIONS[activeLang][key]) {
+            return window.TRANSLATIONS[activeLang][key];
+        }
+        return fallback;
+    }
+
+    // Initialize health guidance module language independently from global sidebar
+    let currentHealthLang = (langSelect && langSelect.value) ? langSelect.value : 'en';
+    try {
+        const savedHealthLang = sessionStorage.getItem("dnaura_health_lang");
+        if (savedHealthLang && ["en", "kn", "hi", "te", "ta"].includes(savedHealthLang)) {
+            currentHealthLang = savedHealthLang;
+            if (langSelect) langSelect.value = savedHealthLang;
+        }
+    } catch (e) {}
+
+    // Apply translations exclusively to the health guidance container if not English
+    if (currentHealthLang && currentHealthLang !== 'en') {
+        const moduleArea = document.getElementById("health-guidance-module-area");
+        if (moduleArea && window.LanguageManager && window.LanguageManager.applyTranslationsToContainer) {
+            window.LanguageManager.applyTranslationsToContainer(currentHealthLang, moduleArea);
+        }
+    }
+
+    function updateHealthListenButtonUI(speaking) {
+        listenBtn = document.getElementById("btn-health-listen");
+        if (!listenBtn) return;
+        if (speaking) {
+            listenBtn.classList.remove("btn-outline-cyan");
+            listenBtn.classList.add("btn-danger");
+            listenBtn.innerHTML = `<i class="bi bi-stop-circle-fill me-1"></i> <span>${getText('js_stop', 'Stop')}</span>`;
+        } else {
+            listenBtn.classList.remove("btn-danger");
+            listenBtn.classList.add("btn-outline-cyan");
+            listenBtn.innerHTML = `<i class="bi bi-volume-up-fill me-1"></i> <span data-i18n="chat_listen_btn">${getText('chat_listen_btn', 'Listen to Guidance')}</span>`;
+        }
+    }
+
+    function wireListenButton() {
+        listenBtn = document.getElementById("btn-health-listen");
+        if (listenBtn) {
+            listenBtn.onclick = function() {
+                if (!currentGuidanceData) return;
+
+                if (window.VoiceAssistant && window.VoiceAssistant.isSpeaking) {
+                    window.VoiceAssistant.stopSpeaking();
+                    updateHealthListenButtonUI(false);
+                    return;
+                }
+
+                const lang = langSelect ? langSelect.value : ((window.LanguageManager && window.LanguageManager.getLanguage) ? window.LanguageManager.getLanguage() : 'en');
+                const foods = Array.isArray(currentGuidanceData.healthy_foods) ? currentGuidanceData.healthy_foods.join(', ') : '';
+                const diets = Array.isArray(currentGuidanceData.diet_considerations) ? currentGuidanceData.diet_considerations.join(', ') : '';
+                const exercises = Array.isArray(currentGuidanceData.exercise_suggestions) ? currentGuidanceData.exercise_suggestions.join(', ') : '';
+                const lifestyles = Array.isArray(currentGuidanceData.lifestyle_recommendations) ? currentGuidanceData.lifestyle_recommendations.join(', ') : '';
+
+                // Localized connectors to prevent English words interrupting regional speech
+                const connectorMap = {
+                    'kn': { 
+                        foods: 'ಸೂಚಿಸಲಾದ ಆರೋಗ್ಯಕರ ಆಹಾರಗಳು: ', 
+                        diets: 'ಆಹಾರ ಕ್ರಮದ ಪರಿಗಣನೆಗಳು: ',
+                        exercises: 'ಶಿಫಾರಸು ಮಾಡಿದ ವ್ಯಾಯಾಮಗಳು: ',
+                        lifestyles: 'ಜೀವನಶೈಲಿ ಸಲಹೆಗಳು: '
+                    },
+                    'hi': { 
+                        foods: 'सुझाए गए पौष्टिक आहार: ', 
+                        diets: 'आहार संबंधी सावधानियां: ',
+                        exercises: 'सुझाए गए व्यायाम: ',
+                        lifestyles: 'जीवनशैली से जुड़े सुझाव: '
+                    },
+                    'ta': { 
+                        foods: 'பரிந்துரைக்கப்பட்ட ஆரோக்கியமான உணவுகள்: ', 
+                        diets: 'உணவு முறைக் குறிப்புகள்: ',
+                        exercises: 'பரிந்துரைக்கப்பட்ட உடற்பயிற்சிகள்: ',
+                        lifestyles: 'வாழ்க்கை முறை பரிந்துரைகள்: '
+                    },
+                    'te': { 
+                        foods: 'సూచించిన ఆరోగ్యకరమైన ఆహారాలు: ', 
+                        diets: 'ఆహార నియమాలు: ',
+                        exercises: 'సిఫార్సు చేయబడిన వ్యాయామాలు: ',
+                        lifestyles: 'జీవనశైలి సూచనలు: '
+                    },
+                    'en': { 
+                        foods: 'Suggested healthy foods: ', 
+                        diets: 'Diet considerations: ',
+                        exercises: 'Recommended exercises: ',
+                        lifestyles: 'Lifestyle recommendations: '
+                    }
+                };
+                const conn = connectorMap[lang] || connectorMap['en'];
+
+                let fullText = `${currentGuidanceData.title}. ${currentGuidanceData.general_wellness}.`;
+                if (foods) fullText += ` ${conn.foods}${foods}.`;
+                if (diets) fullText += ` ${conn.diets}${diets}.`;
+                if (exercises) fullText += ` ${conn.exercises}${exercises}.`;
+                if (lifestyles) fullText += ` ${conn.lifestyles}${lifestyles}.`;
+
+                if (window.VoiceAssistant) {
+                    try {
+                        updateHealthListenButtonUI(true);
+                        window.VoiceAssistant.speakWithCallback(fullText, lang, function() {
+                            updateHealthListenButtonUI(false);
+                        });
+                    } catch (err) {
+                        console.warn("Guidance speech error:", err);
+                        updateHealthListenButtonUI(false);
+                    }
+                }
+            };
+        }
+    }
+    wireListenButton();
+
+    function renderGuidanceResults(data) {
+        currentGuidanceData = data;
+        if (!resultsCard || !data) return;
+
+        // Stop any running speech when new guidance renders
+        if (window.VoiceAssistant && window.VoiceAssistant.isSpeaking) {
+            window.VoiceAssistant.stopSpeaking();
+        }
+
+        const escape = (str) => {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        };
+
+        const renderListItems = (items, iconClass) => {
+            if (!Array.isArray(items)) return '';
+            return items.map(item => `
+                <li class="guidance-list-item">
+                    <i class="bi bi-check-circle-fill ${iconClass} guidance-icon"></i>
+                    <span>${escape(item)}</span>
+                </li>
+            `).join('');
+        };
+
+        const activeLang = (langSelect && langSelect.value) ? langSelect.value : 'en';
+
+        const html = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-dark mb-0 brand-font"><i class="bi bi-lightbulb-fill text-warning me-2"></i>${escape(data.title || 'Wellness Guidance')}</h5>
+                <button class="btn btn-sm btn-outline-cyan px-3 py-1 fw-semibold" id="btn-health-listen" type="button">
+                    <i class="bi bi-volume-up-fill me-1"></i> <span data-i18n="chat_listen_btn">${getText('chat_listen_btn', 'Listen to Guidance', activeLang)}</span>
+                </button>
+            </div>
+            <div class="guidance-results-body">
+                <div class="guidance-section-light mb-4">
+                    <h6 class="guidance-heading-emerald fw-bold mb-2"><i class="bi bi-heart-pulse-fill me-2"></i><span data-i18n="health_gen_well">${getText('health_gen_well', 'General Wellness Overview', activeLang)}</span></h6>
+                    <p class="text-high-contrast mb-0 fs-6 leading-relaxed">${escape(data.general_wellness || '')}</p>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="guidance-section-light h-100">
+                            <h6 class="guidance-heading-cyan fw-bold mb-3"><i class="bi bi-basket-fill me-2"></i><span data-i18n="health_foods">${getText('health_foods', 'Suggested Healthy Foods', activeLang)}</span></h6>
+                            <ul class="guidance-list">
+                                ${renderListItems(data.healthy_foods, 'text-cyan')}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="guidance-section-light h-100">
+                            <h6 class="guidance-heading-warning fw-bold mb-3"><i class="bi bi-egg-fried me-2"></i><span data-i18n="health_diet">${getText('health_diet', 'Diet Considerations', activeLang)}</span></h6>
+                            <ul class="guidance-list">
+                                ${renderListItems(data.diet_considerations, 'text-warning')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="guidance-section-light h-100">
+                            <h6 class="guidance-heading-purple fw-bold mb-3"><i class="bi bi-activity me-2"></i><span data-i18n="health_exercise">${getText('health_exercise', 'Exercise Suggestions', activeLang)}</span></h6>
+                            <ul class="guidance-list">
+                                ${renderListItems(data.exercise_suggestions, 'text-purple')}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="guidance-section-light h-100">
+                            <h6 class="guidance-heading-emerald fw-bold mb-3"><i class="bi bi-sun-fill me-2"></i><span data-i18n="health_lifestyle">${getText('health_lifestyle', 'Lifestyle Recommendations', activeLang)}</span></h6>
+                            <ul class="guidance-list">
+                                ${renderListItems(data.lifestyle_recommendations, 'text-emerald')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        resultsCard.innerHTML = html;
+        wireListenButton();
+    }
+
+    function generateGuidanceAjax(problemText, lang) {
+        if (!problemText || !problemText.trim()) return;
+
+        const activeLang = (langSelect && langSelect.value) ? langSelect.value : 'en';
+
+        // Immediate visual feedback inside the card
+        if (resultsCard) {
+            resultsCard.innerHTML = `
+                <div class="text-center py-5 my-auto" id="guidance-inline-loading">
+                    <div class="spinner-border text-emerald mb-3" style="width: 2.75rem; height: 2.75rem;" role="status"></div>
+                    <h5 class="brand-font text-dark fw-bold mb-1">${getText('health_loading_msg', 'AI is generating your wellness guidance...', activeLang)}</h5>
+                    <p class="text-secondary small mb-0">${getText('health_loading_sub', 'AI is generating fast tailored recommendations...', activeLang)}</p>
+                </div>
+            `;
+        }
+
+        fetch("/health-guidance/api/generate", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                problem: problemText.trim(),
+                language: activeLang
+            })
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("HTTP error " + res.status);
+            return res.json();
+        })
+        .then(data => {
+            if (data.error) {
+                if (resultsCard) {
+                    resultsCard.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                }
+            } else {
+                renderGuidanceResults(data);
+            }
+        })
+        .catch(err => {
+            console.warn("AJAX generation failed, fallback to form submit:", err);
+            if (form) form.submit();
+        });
+    }
+
+    // Handle form submission via AJAX for instant feedback
+    if (form) {
+        form.addEventListener("submit", function(e) {
+            e.preventDefault();
+            const val = problemInput ? problemInput.value : '';
+            const lang = langSelect ? langSelect.value : 'en';
+            generateGuidanceAjax(val, lang);
+        });
+    }
+
+    function handleLangChange(newLang) {
+        if (!newLang) return;
+        if (langSelect && langSelect.value !== newLang) {
+            langSelect.value = newLang;
+        }
+        try { sessionStorage.setItem("dnaura_health_lang", newLang); } catch (e) {}
+
+        const moduleArea = document.getElementById("health-guidance-module-area");
+        if (moduleArea && window.LanguageManager && window.LanguageManager.applyTranslationsToContainer) {
+            window.LanguageManager.applyTranslationsToContainer(newLang, moduleArea);
+        }
+
+        if (problemInput && problemInput.value.trim().length > 0) {
+            generateGuidanceAjax(problemInput.value.trim(), newLang);
+        } else if (currentGuidanceData) {
+            generateGuidanceAjax(currentGuidanceData.title || "General Wellness", newLang);
+        }
+    }
+
+    if (langSelect) {
+        langSelect.addEventListener("change", function() {
+            handleLangChange(this.value);
+        });
+    }
+
+    window.addEventListener("healthLanguageChanged", function(e) {
+        const newLang = e.detail && e.detail.language;
+        if (newLang) {
+            handleLangChange(newLang);
+        }
+    });
+
+    // Sample Prompt Buttons
+    document.querySelectorAll(".sample-prompt-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            const sampleKey = this.dataset.sampleKey;
+            const fallbackText = this.dataset.text;
+            const activeLang = langSelect ? langSelect.value : 'en';
+            const promptVal = getText(sampleKey, fallbackText, activeLang);
+            if (problemInput) {
+                problemInput.value = promptVal;
+                generateGuidanceAjax(promptVal, activeLang);
+            }
+        });
+    });
+
+    // Voice Input (Speech to text) -> Instant request trigger
+    if (speakBtn) {
+        speakBtn.addEventListener("click", function() {
+            const lang = langSelect ? langSelect.value : (window.LanguageManager ? window.LanguageManager.getLanguage() : 'en');
+            const defaultSpeakText = getText("health_speak_btn", "Speak Problem");
+            if (window.VoiceAssistant && window.VoiceAssistant.isListening) {
+                window.VoiceAssistant.stopListening();
+                micText.textContent = defaultSpeakText;
+                speakBtn.classList.remove("btn-danger");
+                speakBtn.classList.add("btn-outline-emerald");
+                micStatus.textContent = "";
+                return;
+            }
+
+            micText.textContent = getText("health_listening", "Listening...");
+            speakBtn.classList.remove("btn-outline-emerald");
+            speakBtn.classList.add("btn-danger");
+            micStatus.textContent = getText("health_speak_mic", "Speak into your microphone...");
+
+            if (window.VoiceAssistant) {
+                window.VoiceAssistant.startListening(
+                    lang,
+                    function(transcript) {
+                        if (problemInput) problemInput.value = transcript;
+                        micStatus.textContent = getText("health_captured_speech", "Captured speech!");
+                        micText.textContent = defaultSpeakText;
+                        speakBtn.classList.remove("btn-danger");
+                        speakBtn.classList.add("btn-outline-emerald");
+                        // Immediately trigger generation upon speech capture
+                        generateGuidanceAjax(transcript, lang);
+                    },
+                    function(err) {
+                        micStatus.textContent = getText("health_mic_error", "Mic error: ") + err;
+                        micText.textContent = defaultSpeakText;
+                        speakBtn.classList.remove("btn-danger");
+                        speakBtn.classList.add("btn-outline-emerald");
+                    },
+                    function() {
+                        micText.textContent = defaultSpeakText;
+                        speakBtn.classList.remove("btn-danger");
+                        speakBtn.classList.add("btn-outline-emerald");
+                    }
+                );
+            }
+        });
+    }
+
+
+});
+</script>
+{% endblock %}
+
+

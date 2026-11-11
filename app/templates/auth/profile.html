@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings &amp; Profile — DNAura{% endblock %}
+
+{% block content %}
+<span data-i18n="prof_page_title" id="page-i18n-title" style="display:none;"></span>
+<div class="container-fluid px-0">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge px-2.5 py-1 text-uppercase fw-semibold" style="background: rgba(23, 105, 170, 0.1); color: var(--primary); font-size: 0.75rem; letter-spacing: 0.5px;">
+                    <i class="bi bi-gear-wide-connected me-1"></i> Control Center
+                </span>
+            </div>
+            <h2 class="fw-bold mb-1 brand-font" data-i18n="prof_title" style="font-size: 1.65rem; color: var(--text-main, #172033);">Account Settings &amp; Profile</h2>
+            <p class="small mb-0" data-i18n="prof_desc" style="color: var(--text-secondary, #536174);">Manage your personal identity, clinical baseline records, and security preferences.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a class="btn btn-outline-custom d-flex align-items-center gap-2" href="{{ url_for('dashboard.index') }}">
+                <i class="bi bi-arrow-left"></i> <span data-i18n="admin_nav_dashboard">Dashboard</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN TWO-COLUMN LAYOUT -->
+    <div class="row g-4">
+
+        <!-- LEFT COLUMN: USER IDENTITY & HEALTH SNAPSHOT -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="d-flex flex-column gap-4">
+
+                <!-- 1. USER IDENTITY CARD -->
+                <div class="card-glass p-4 text-center position-relative overflow-hidden">
+                    <div class="position-absolute top-0 start-0 w-100" style="height: 6px; background: linear-gradient(90deg, #1769AA 0%, #0F8B8D 50%, #059669 100%);"></div>
+
+                    <!-- Avatar with gradient ring -->
+                    <div class="mx-auto mt-2 mb-3 position-relative" style="width: 88px; height: 88px;">
+                        <div class="w-100 h-100 rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="background: linear-gradient(135deg, #1769AA 0%, #0F8B8D 100%); font-size: 2.2rem; border: 3px solid rgba(255, 255, 255, 0.9);">
+                            {{ user.full_name[0] | upper if user.full_name else 'U' }}
+                        </div>
+                        <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-white rounded-circle" title="Account Active" style="width: 18px; height: 18px;"></span>
+                    </div>
+
+                    <h4 class="fw-bold mb-1 text-dark brand-font">{{ user.full_name }}</h4>
+                    <p class="text-secondary small mb-2 font-mono">@{{ user.username }}</p>
+
+                    <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap mb-3">
+                        <span class="badge px-2.5 py-1 rounded-pill" style="background: rgba(15, 139, 141, 0.12); color: #0F8B8D; font-size: 0.75rem; font-weight: 600;">
+                            <i class="bi bi-patch-check-fill me-1"></i> {{ (user.role or 'researcher')|capitalize }}
+                        </span>
+                        <span class="badge px-2.5 py-1 rounded-pill bg-light text-secondary border" style="font-size: 0.75rem;">
+                            <i class="bi bi-shield-check text-success me-1"></i> Verified
+                        </span>
+                    </div>
+
+                    <hr class="my-3 opacity-25">
+
+                    <!-- Contact Snippets -->
+                    <div class="text-start small d-flex flex-column gap-2 text-secondary px-1">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span class="text-muted"><i class="bi bi-envelope me-2 text-primary"></i>Email</span>
+                            <span class="text-dark fw-medium text-truncate" style="max-width: 180px;" title="{{ user.email }}">{{ user.email }}</span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span class="text-muted"><i class="bi bi-telephone me-2 text-primary"></i>Phone</span>
+                            <span class="text-dark fw-medium">{{ user.phone or 'Not provided' }}</span>
+                        </div>
+                        <div class="d-flex align-items-start justify-content-between">
+                            <span class="text-muted"><i class="bi bi-geo-alt me-2 text-danger"></i>Location</span>
+                            <span class="text-dark fw-medium text-end text-truncate" style="max-width: 180px;" title="{{ user.address or 'Not set' }}">{{ user.address or 'Not set' }}</span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span class="text-muted"><i class="bi bi-calendar-event me-2 text-muted"></i>Member Since</span>
+                            <span class="text-dark fw-medium">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else 'Active User' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. CLINICAL SNAPSHOT MINI-CARD -->
+                <div class="card-glass p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold mb-0 text-dark brand-font d-flex align-items-center gap-2">
+                            <i class="bi bi-heart-pulse-fill text-danger"></i> Clinical Metrics Snapshot
+                        </h6>
+                        <span class="badge bg-danger-subtle text-danger" style="font-size: 0.7rem;">Live</span>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <div class="p-2.5 rounded-3 text-center" style="background: rgba(220, 38, 38, 0.06); border: 1px solid rgba(220, 38, 38, 0.15);">
+                                <span class="d-block text-muted" style="font-size: 0.7rem;">Blood</span>
+                                <strong class="text-danger fs-6">{{ user.blood_group or '—' }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2.5 rounded-3 text-center" style="background: rgba(15, 139, 141, 0.06); border: 1px solid rgba(15, 139, 141, 0.15);">
+                                <span class="d-block text-muted" style="font-size: 0.7rem;">Height</span>
+                                <strong class="text-emerald fs-6">{{ user.height or '—' }} <small class="text-muted" style="font-size: 0.65rem;">cm</small></strong>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2.5 rounded-3 text-center" style="background: rgba(23, 105, 170, 0.06); border: 1px solid rgba(23, 105, 170, 0.15);">
+                                <span class="d-block text-muted" style="font-size: 0.7rem;">Weight</span>
+                                <strong class="text-primary fs-6">{{ user.weight or '—' }} <small class="text-muted" style="font-size: 0.65rem;">kg</small></strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Computed BMI Bar -->
+                    <div class="p-2.5 rounded-3 border bg-light d-flex align-items-center justify-content-between" id="sidebar-bmi-card">
+                        <span class="small text-secondary"><i class="bi bi-activity text-primary me-1"></i> Body Mass Index (BMI):</span>
+                        <span class="badge px-2 py-1 fw-bold" id="sidebar-bmi-val" style="background: rgba(23, 105, 170, 0.15); color: var(--primary);">
+                            Calculating...
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 3. QUICK NAVIGATION / JUMP PILLS -->
+                <div class="card-glass p-3">
+                    <span class="text-muted small fw-semibold text-uppercase px-2 mb-2 d-block" style="font-size: 0.7rem; letter-spacing: 0.5px;">Quick Navigation</span>
+                    <div class="d-flex flex-column gap-1">
+                        <a href="#section-personal-profile" class="btn btn-sm btn-link text-start text-decoration-none text-secondary d-flex align-items-center gap-2 px-2 py-1.5 rounded" style="transition: all 0.2s;">
+                            <i class="bi bi-person-vcard text-primary"></i> <span>Personal &amp; Clinical Details</span>
+                        </a>
+                        <a href="#section-security-password" class="btn btn-sm btn-link text-start text-decoration-none text-secondary d-flex align-items-center gap-2 px-2 py-1.5 rounded" style="transition: all 0.2s;">
+                            <i class="bi bi-shield-lock text-success"></i> <span>Password &amp; Security</span>
+                        </a>
+                        <a href="#section-preferences-display" class="btn btn-sm btn-link text-start text-decoration-none text-secondary d-flex align-items-center gap-2 px-2 py-1.5 rounded" style="transition: all 0.2s;">
+                            <i class="bi bi-sliders text-warning"></i> <span>Language &amp; Theme Appearance</span>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: STRUCTURED SETTINGS PANELS -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="d-flex flex-column gap-4">
+
+                <!-- SECTION 1: PERSONAL & CLINICAL INFORMATION (UNIFIED FORM) -->
+                <div class="card-glass p-4" id="section-personal-profile">
+                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-dark brand-font d-flex align-items-center gap-2">
+                                <i class="bi bi-person-vcard-fill text-primary"></i> <span data-i18n="prof_account_info">Personal &amp; Clinical Profile</span>
+                            </h5>
+                            <p class="text-secondary small mb-0">Update your contact credentials, hospital search address, and health records.</p>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary fw-medium px-2.5 py-1" style="font-size: 0.75rem;">Profile Data</span>
+                    </div>
+
+                    <form method="POST">
+                        <input name="action" type="hidden" value="update_profile"/>
+
+                        <!-- Subsection A: Personal & Contact Information -->
+                        <div class="mb-4">
+                            <span class="fw-semibold text-uppercase text-muted small d-block mb-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                <i class="bi bi-person-lines-fill me-1 text-primary"></i> 1. Contact &amp; Identity
+                            </span>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold text-secondary" data-i18n="prof_fullname">Full Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person"></i></span>
+                                        <input class="form-control border-start-0" data-i18n-placeholder="reg_ph_full_name" name="full_name" placeholder="Enter full name" required="" type="text" value="{{ user.full_name }}"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold text-secondary" data-i18n="prof_email">Email Address</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
+                                        <input class="form-control border-start-0" data-i18n-placeholder="reg_ph_email" name="email" placeholder="Enter email address" required="" type="email" value="{{ user.email }}"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold text-secondary" data-i18n="reg_label_phone">Phone Number</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-telephone"></i></span>
+                                        <input class="form-control border-start-0" data-i18n-placeholder="reg_ph_phone" name="phone" placeholder="e.g. +91 9876543210" type="tel" value="{{ user.phone or '' }}"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold text-secondary" data-i18n="prof_user_fixed">Username (Immutable)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-lock-fill"></i></span>
+                                        <input class="form-control border-start-0 bg-light text-muted" disabled="" type="text" value="{{ user.username }}"/>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small fw-semibold text-secondary" data-i18n="gen_address_used_for_hos_3d36">Full Address (Used for Nearby Hospital Location Search)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-geo-alt"></i></span>
+                                        <textarea class="form-control border-start-0" data-i18n-placeholder="reg_ph_address" name="address" placeholder="Enter your full street address, city, state and PIN code" required="" rows="2">{{ user.address or '' }}</textarea>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block" style="font-size: 0.75rem;">
+                                        <i class="bi bi-info-circle me-1 text-primary"></i> Geocoded automatically to find nearby genetic counseling centers and specialists.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Subsection B: Clinical Baseline & Health Metrics -->
+                        <div class="mb-4 pt-3 border-top">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <span class="fw-semibold text-uppercase text-muted small d-block" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                    <i class="bi bi-heart-pulse-fill me-1 text-danger"></i> 2. Clinical Baseline &amp; Physical Metrics
+                                </span>
+                                <span class="badge bg-danger-subtle text-danger" style="font-size: 0.7rem;">Included in Profile</span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-secondary" data-i18n="gen_blood_group_0bf1">Blood Group</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-danger border-end-0"><i class="bi bi-droplet-fill"></i></span>
+                                        <select class="form-select border-start-0" name="blood_group">
+                                            <option data-i18n="gen_select_e062" value="">Select Blood Group</option>
+                                            {% for bg in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] %}
+                                            <option value="{{ bg }}" {% if user.blood_group == bg %}selected{% endif %}>{{ bg }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-secondary" data-i18n="gen_height_cm_20fb">Height (cm)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-rulers"></i></span>
+                                        <input class="form-control border-start-0" id="input_height" data-i18n-placeholder="reg_ph_height" name="height" placeholder="e.g. 175" step="0.1" type="number" value="{{ user.height or '' }}"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-secondary" data-i18n="gen_weight_kg_9172">Weight (kg)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-speedometer2"></i></span>
+                                        <input class="form-control border-start-0" id="input_weight" data-i18n-placeholder="reg_ph_weight" name="weight" placeholder="e.g. 70.5" step="0.1" type="number" value="{{ user.weight or '' }}"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Live Calculated BMI Banner -->
+                            <div class="p-3 rounded-3 mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background: rgba(15, 139, 141, 0.06); border: 1px dashed rgba(15, 139, 141, 0.35);">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-heart-pulse fs-5 text-emerald"></i>
+                                    <div>
+                                        <strong class="d-block text-dark small">Calculated Body Mass Index (BMI)</strong>
+                                        <span class="text-secondary" id="form-bmi-desc" style="font-size: 0.8rem;">Enter height and weight to calculate BMI</span>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="fs-5 fw-bold font-mono text-emerald" id="form-bmi-val">—</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Submit Button -->
+                        <div class="d-flex justify-content-end pt-2 border-top">
+                            <button class="btn btn-primary-gradient px-4 py-2 fw-semibold d-flex align-items-center gap-2" data-i18n="gen_save_changes_f5d6" type="submit">
+                                <i class="bi bi-check-circle-fill"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- SECTION 2: SECURITY & PASSWORD UPDATE -->
+                <div class="card-glass p-4" id="section-security-password">
+                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-dark brand-font d-flex align-items-center gap-2">
+                                <i class="bi bi-shield-lock-fill text-teal"></i> <span data-i18n="prof_update_pass">Security &amp; Password</span>
+                            </h5>
+                            <p class="text-secondary small mb-0" data-i18n="prof_pass_sub">Keep your account secure with regular password updates.</p>
+                        </div>
+                        <span class="badge bg-teal-subtle text-teal fw-medium px-2.5 py-1" style="font-size: 0.75rem; background: rgba(15, 139, 141, 0.12); color: #0F8B8D;">Authentication</span>
+                    </div>
+
+                    <form method="POST">
+                        <input name="action" type="hidden" value="change_password"/>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary" data-i18n="prof_curr_pass">Current Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-key"></i></span>
+                                    <input class="form-control border-start-0 border-end-0" data-i18n-placeholder="ph_curr_pass" id="curr_pass_input" name="current_password" placeholder="Enter current password" required="" type="password"/>
+                                    <button class="btn btn-outline-secondary border-start-0 toggle-password-btn" data-target="curr_pass_input" type="button">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary" data-i18n="prof_new_pass">New Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-shield-plus"></i></span>
+                                    <input class="form-control border-start-0 border-end-0" data-i18n-placeholder="ph_new_pass" id="new_pass_input" minlength="8" name="new_password" placeholder="Min. 8 characters" required="" type="password"/>
+                                    <button class="btn btn-outline-secondary border-start-0 toggle-password-btn" data-target="new_pass_input" type="button">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary" data-i18n="prof_conf_pass">Confirm New Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-shield-check"></i></span>
+                                    <input class="form-control border-start-0 border-end-0" data-i18n-placeholder="ph_conf_pass" id="conf_pass_input" minlength="8" name="confirm_password" placeholder="Repeat new password" required="" type="password"/>
+                                    <button class="btn btn-outline-secondary border-start-0 toggle-password-btn" data-target="conf_pass_input" type="button">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-2.5 rounded-3 bg-light border mt-3 d-flex align-items-center gap-2 small text-secondary">
+                            <i class="bi bi-shield-exclamation text-warning fs-5"></i>
+                            <span style="font-size: 0.8rem;">Password must contain at least 8 characters. We recommend a combination of uppercase letters, numbers, and symbols.</span>
+                        </div>
+
+                        <div class="d-flex justify-content-end pt-3 mt-3 border-top">
+                            <button class="btn btn-cyan-gradient px-4 py-2 fw-semibold d-flex align-items-center gap-2" data-i18n="prof_update_pass" type="submit">
+                                <i class="bi bi-key-fill"></i> Update Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- SECTION 3: SYSTEM PREFERENCES & DISPLAY APPEARANCE -->
+                <div class="card-glass p-4" id="section-preferences-display">
+                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-dark brand-font d-flex align-items-center gap-2">
+                                <i class="bi bi-sliders text-warning"></i> <span data-i18n="prof_app_pref">Interface Preferences &amp; Appearance</span>
+                            </h5>
+                            <p class="text-secondary small mb-0" data-i18n="prof_app_sub">Customize your display language and dark/light color scheme.</p>
+                        </div>
+                        <span class="badge bg-warning-subtle text-warning fw-medium px-2.5 py-1" style="font-size: 0.75rem;">Workspace</span>
+                    </div>
+
+                    <form id="preferences-form">
+                        <div class="row g-4">
+                            <!-- Language Preference Card -->
+                            <div class="col-md-6">
+                                <div class="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                                    <div>
+                                        <label class="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-2" data-i18n="reg_label_language">
+                                            <i class="bi bi-translate text-primary"></i> Primary Language
+                                        </label>
+                                        <p class="text-secondary small mb-3">Choose the default language for labels, modules, and reports.</p>
+                                    </div>
+                                    <select class="form-select global-lang-select py-2" id="settings_language" style="border-color: var(--border-color, #D9E1EA); border-radius: 8px;">
+                                        <option value="en">English (Global Default)</option>
+                                        <option value="hi">हिन्दी (Hindi)</option>
+                                        <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                                        <option value="ta">தமிழ் (Tamil)</option>
+                                        <option value="te">తెలుగు (Telugu)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Display Theme Card -->
+                            <div class="col-md-6">
+                                <div class="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                                    <div>
+                                        <label class="form-label fw-bold text-dark mb-1 d-flex align-items-center gap-2" data-i18n="reg_label_theme">
+                                            <i class="bi bi-palette-fill text-warning"></i> Color Scheme
+                                        </label>
+                                        <p class="text-secondary small mb-3">Switch between high-contrast light and sleek dark mode.</p>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-secondary theme-toggle-btn w-100 py-2 d-flex align-items-center justify-content-center gap-2" style="border-radius: 8px; font-weight: 500;">
+                                        <i class="bi bi-moon-stars-fill theme-icon-dark" style="display: none;"></i>
+                                        <i class="bi bi-sun-fill theme-icon-light"></i>
+                                        <span class="theme-label" data-i18n="theme_light">Toggle Theme</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Language selector sync
+    const langSelect = document.getElementById('settings_language');
+    if (langSelect) {
+        const currentLang = localStorage.getItem('dnaura_language') || 'en';
+        langSelect.value = currentLang;
+    }
+
+    // 2. Interactive BMI computation
+    const heightInput = document.getElementById('input_height');
+    const weightInput = document.getElementById('input_weight');
+    const formBmiVal = document.getElementById('form-bmi-val');
+    const formBmiDesc = document.getElementById('form-bmi-desc');
+    const sidebarBmiVal = document.getElementById('sidebar-bmi-val');
+
+    function calculateBmi() {
+        const h = parseFloat(heightInput ? heightInput.value : 0);
+        const w = parseFloat(weightInput ? weightInput.value : 0);
+
+        if (h > 50 && w > 10) {
+            const hMeters = h / 100.0;
+            const bmi = (w / (hMeters * hMeters)).toFixed(1);
+            let category = "Normal weight";
+            let colorClass = "text-success";
+            let badgeStyle = "background: rgba(16, 185, 129, 0.15); color: #059669;";
+
+            if (bmi < 18.5) {
+                category = "Underweight";
+                colorClass = "text-warning";
+                badgeStyle = "background: rgba(245, 158, 11, 0.15); color: #D97706;";
+            } else if (bmi >= 25 && bmi < 30) {
+                category = "Overweight";
+                colorClass = "text-warning";
+                badgeStyle = "background: rgba(245, 158, 11, 0.15); color: #D97706;";
+            } else if (bmi >= 30) {
+                category = "Obese";
+                colorClass = "text-danger";
+                badgeStyle = "background: rgba(220, 38, 38, 0.15); color: #DC2626;";
+            }
+
+            if (formBmiVal) formBmiVal.textContent = `${bmi} kg/m²`;
+            if (formBmiDesc) formBmiDesc.innerHTML = `<span class="${colorClass} fw-semibold">${category}</span> (Calculated)`;
+            if (sidebarBmiVal) {
+                sidebarBmiVal.textContent = `${bmi} (${category})`;
+                sidebarBmiVal.setAttribute('style', badgeStyle);
+            }
+        } else {
+            if (formBmiVal) formBmiVal.textContent = "—";
+            if (formBmiDesc) formBmiDesc.textContent = "Enter height and weight to calculate BMI";
+            if (sidebarBmiVal) {
+                sidebarBmiVal.textContent = "Pending Data";
+                sidebarBmiVal.setAttribute('style', 'background: rgba(113, 128, 150, 0.15); color: #718096;');
+            }
+        }
+    }
+
+    if (heightInput && weightInput) {
+        heightInput.addEventListener('input', calculateBmi);
+        weightInput.addEventListener('input', calculateBmi);
+        calculateBmi();
+    }
+
+    // 3. Password visibility toggle
+    document.querySelectorAll('.toggle-password-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const targetInput = document.getElementById(targetId);
+            if (targetInput) {
+                const isPassword = targetInput.getAttribute('type') === 'password';
+                targetInput.setAttribute('type', isPassword ? 'text' : 'password');
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('bi-eye', !isPassword);
+                    icon.classList.toggle('bi-eye-slash', isPassword);
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

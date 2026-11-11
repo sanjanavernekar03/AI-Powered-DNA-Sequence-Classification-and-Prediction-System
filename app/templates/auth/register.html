@@ -1,0 +1,768 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account — DNAura{% endblock %}
+
+{% block extra_css %}
+<style>
+.step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+    gap: 0.75rem;
+}
+.step-dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #536174);
+    background: var(--bg-surface-elevated, #F1F5F9);
+    border: 2px solid var(--border-color, #E2E8F0);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.step-dot.active {
+    background: var(--primary, #6B46C1);
+    color: #FFFFFF;
+    border-color: var(--primary, #6B46C1);
+    box-shadow: 0 0 0 4px rgba(107, 70, 193, 0.2);
+}
+.step-dot.completed {
+    background: var(--secondary, #0D9488);
+    color: #FFFFFF;
+    border-color: var(--secondary, #0D9488);
+}
+.step-line {
+    width: 45px;
+    height: 2px;
+    background: var(--border-color, #E2E8F0);
+    transition: background 0.3s ease;
+}
+.step-line.active {
+    background: var(--secondary, #0D9488);
+}
+.step-text {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary, #536174);
+    transition: color 0.3s ease;
+    text-align: center;
+    white-space: nowrap;
+}
+.step-text.active {
+    color: var(--primary, #6B46C1);
+}
+.step-text.completed {
+    color: var(--secondary, #0D9488);
+}
+.form-step {
+    display: none;
+    animation: fadeIn 0.35s ease;
+}
+.form-step.active {
+    display: block;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Theme Option Cards */
+.theme-card {
+    cursor: pointer;
+    border: 2px solid var(--border-color, #E2E8F0);
+    border-radius: 14px;
+    padding: 16px;
+    background: var(--bg-card, #FFFFFF);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.theme-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    border-color: rgba(107, 70, 193, 0.4);
+}
+.theme-card.selected {
+    border-color: var(--primary, #6B46C1) !important;
+    background: var(--primary-light, #F5F3FF);
+    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.22), 0 10px 24px rgba(107, 70, 193, 0.12);
+}
+[data-theme="dark"] .theme-card.selected {
+    background: rgba(107, 70, 193, 0.18) !important;
+    border-color: #A78BFA !important;
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.3);
+}
+
+/* Theme Mockup Frame */
+.theme-mockup-frame {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+}
+.theme-mockup-light {
+    background: #F8FAFC;
+    color: #1E293B;
+}
+.theme-mockup-dark {
+    background: #0F172A;
+    color: #F8FAFC;
+    border-color: #334155;
+}
+
+/* Language Selection Card */
+.lang-card {
+    cursor: pointer;
+    border: 2px solid var(--border-color, #E2E8F0);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: var(--bg-card, #FFFFFF);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+    height: 100%;
+}
+.lang-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(13, 148, 136, 0.45);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+.lang-card.selected {
+    border-color: var(--secondary, #0D9488) !important;
+    background: var(--secondary-light, #F0FDFA);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+}
+[data-theme="dark"] .lang-card.selected {
+    background: rgba(13, 148, 136, 0.16) !important;
+    border-color: #2DD4BF !important;
+    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.25);
+}
+
+.theme-card *, .lang-card * {
+    pointer-events: none;
+}
+
+/* Custom Check Indicator */
+.selection-check-indicator {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--border-color, #CBD5E1);
+    background: transparent;
+    color: transparent;
+    transition: all 0.2s ease;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+.theme-card.selected .selection-check-indicator {
+    background: var(--primary, #6B46C1);
+    border-color: var(--primary, #6B46C1);
+    color: #FFFFFF;
+}
+.lang-card.selected .selection-check-indicator {
+    background: var(--secondary, #0D9488);
+    border-color: var(--secondary, #0D9488);
+    color: #FFFFFF;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<span data-i18n="reg_page_title" id="page-i18n-title" style="display:none;"></span>
+<div class="auth-viewport d-flex align-items-center justify-content-center py-5" style="min-height: calc(100vh - 75px); background-color: var(--bg-main);">
+<div class="container" id="reg-container" style="max-width: 680px; transition: max-width 0.3s ease;">
+<div class="card border-0 shadow-sm p-4 p-md-5 position-relative" style="background-color: var(--bg-card); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;">
+<div class="text-center mb-4">
+<div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 60px; height: 60px; background: var(--primary, #6B46C1); color: #FFFFFF; font-size: 1.8rem; box-shadow: 0 4px 12px rgba(107, 70, 193, 0.2);">
+<i class="bi bi-person-plus"></i>
+</div>
+<h3 class="fw-bold mb-1" data-i18n="gen_create_your_DNAura_82d5" style="color: var(--text-main);">Create your DNAura account</h3>
+<p class="small mb-0" data-i18n="gen_join_us_to_unlock_pe_c8b8" style="color: var(--text-secondary);">Join us to unlock personalized health insights.</p>
+</div>
+
+<!-- Progress Indicator -->
+<div class="step-indicator">
+<div class="d-flex flex-column align-items-center gap-1" style="min-width: 90px;">
+<div class="step-dot active" id="dot-step1">1</div>
+<span class="step-text active" data-i18n="reg_step_1" id="text-step1">Personal Details</span>
+</div>
+<div class="step-line" id="line-step1"></div>
+<div class="d-flex flex-column align-items-center gap-1" style="min-width: 90px;">
+<div class="step-dot" id="dot-step2">2</div>
+<span class="step-text" data-i18n="gen_health_information_dad9" id="text-step2">Health Information</span>
+</div>
+<div class="step-line" id="line-step2"></div>
+<div class="d-flex flex-column align-items-center gap-1" style="min-width: 90px;">
+<div class="step-dot" id="dot-step3">3</div>
+<span class="step-text" id="text-step3">Theme & Language</span>
+</div>
+</div>
+
+<form action="{{ url_for('auth.register') }}" id="registration-form" method="POST">
+<!-- Hidden Inputs for Step 3 Preferences -->
+<input type="hidden" id="reg_theme" name="theme" value="light"/>
+<input type="hidden" id="reg_language" name="language" value="en"/>
+
+<!-- STEP 1: PERSONAL DETAILS -->
+<div class="form-step active" id="step1">
+<div class="row g-3">
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="prof_fullname" style="color: var(--text-secondary, #536174);">Full Name <span class="text-danger">*</span></label>
+<input class="form-control" data-i18n-placeholder="reg_ph_full_name" id="full_name" name="full_name" placeholder="Enter full name" required="" style="border-color: var(--border-color, #D9E1EA);" type="text" value="{{ form_data.get('full_name', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_username" style="color: var(--text-secondary, #536174);">Username <span class="text-danger">*</span></label>
+<input class="form-control" data-i18n-placeholder="reg_ph_username" id="username" minlength="3" name="username" placeholder="Enter username" required="" style="border-color: var(--border-color, #D9E1EA);" type="text" value="{{ form_data.get('username', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="gen_email_ce8a" style="color: var(--text-secondary, #536174);">Email <span class="text-danger">*</span></label>
+<input class="form-control" data-i18n-placeholder="reg_ph_email" id="email" name="email" placeholder="Enter email" required="" style="border-color: var(--border-color, #D9E1EA);" type="email" value="{{ form_data.get('email', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_phone" style="color: var(--text-secondary, #536174);">Phone Number <span class="text-danger">*</span></label>
+<input class="form-control" data-i18n-placeholder="reg_ph_phone" id="phone" name="phone" placeholder="Enter phone number" required="" style="border-color: var(--border-color, #D9E1EA);" type="tel" value="{{ form_data.get('phone', '') }}"/>
+</div>
+<div class="col-12">
+<label class="form-label small fw-medium" data-i18n="gen_address_dd7b" style="color: var(--text-secondary, #536174);">Address <span class="text-danger">*</span></label>
+<textarea class="form-control" data-i18n-placeholder="reg_ph_address" id="address" name="address" placeholder="Enter complete address" required="" rows="2" style="border-color: var(--border-color, #D9E1EA);">{{ form_data.get('address', '') }}</textarea>
+</div>
+
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_city" style="color: var(--text-secondary, #536174);">City</label>
+<input class="form-control" data-i18n-placeholder="reg_ph_city" id="city" name="city" placeholder="e.g., Bangalore" style="border-color: var(--border-color, #D9E1EA);" type="text" value="{{ form_data.get('city', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_state" style="color: var(--text-secondary, #536174);">State</label>
+<input class="form-control" data-i18n-placeholder="reg_ph_state" id="state" name="state" placeholder="e.g., Karnataka" style="border-color: var(--border-color, #D9E1EA);" type="text" value="{{ form_data.get('state', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_country" style="color: var(--text-secondary, #536174);">Country</label>
+<input class="form-control" data-i18n-placeholder="reg_ph_country" id="country" name="country" placeholder="e.g., India" style="border-color: var(--border-color, #D9E1EA);" type="text" value="{{ form_data.get('country', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_postal_code" style="color: var(--text-secondary, #536174);">Postal Code</label>
+<input class="form-control" data-i18n-placeholder="reg_ph_postal" id="postal_code" name="postal_code" placeholder="e.g., 560001" style="border-color: var(--border-color, #D9E1EA);" type="text" value="{{ form_data.get('postal_code', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_password" style="color: var(--text-secondary, #536174);">Password <span class="text-danger">*</span></label>
+<input class="form-control" data-i18n-placeholder="reg_ph_create_pass" id="password" minlength="8" name="password" placeholder="Create password" required="" style="border-color: var(--border-color, #D9E1EA);" type="password"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_confirm_password" style="color: var(--text-secondary, #536174);">Confirm Password <span class="text-danger">*</span></label>
+<input class="form-control" data-i18n-placeholder="reg_label_confirm_password" id="confirm_password" minlength="8" name="confirm_password" placeholder="Confirm password" required="" style="border-color: var(--border-color, #D9E1EA);" type="password"/>
+</div>
+</div>
+
+<button class="btn w-100 py-3 fw-bold text-white mt-4 shadow-sm" id="btn-next-step1" onmouseout="this.style.transform='translateY(0)';" onmouseover="this.style.transform='translateY(-2px)';" style="background-color: var(--primary, #6B46C1); border-radius: 10px; transition: transform 0.2s ease;" type="button">
+Next: Health Information <i class="bi bi-arrow-right ms-1"></i>
+</button>
+</div>
+
+<!-- STEP 2: HEALTH INFORMATION -->
+<div class="form-step" id="step2">
+<div class="alert alert-info border-0 mb-4 d-flex align-items-center" data-i18n="auto_62e53e" style="background-color: rgba(13, 148, 136, 0.1); color: var(--secondary, #0D9488); font-size: 0.9rem; border-radius: 8px;">
+<i class="bi bi-info-circle-fill me-2 fs-5"></i> This basic information helps DNAura personalize your health recommendations and DNA analyses.
+</div>
+<div class="row g-3">
+<div class="col-md-12">
+<label class="form-label small fw-medium" data-i18n="gen_blood_group_0bf1" style="color: var(--text-secondary, #536174);">Blood Group</label>
+<select class="form-select" name="blood_group" style="border-color: var(--border-color, #D9E1EA);">
+<option data-i18n="gen_select_blood_group_o_dbec" value="">Select Blood Group (Optional)</option>
+<option value="A+" {% if form_data.get('blood_group') == 'A+' %}selected{% endif %} data-i18n="gen_a_13fe">A+</option>
+<option value="A-" {% if form_data.get('blood_group') == 'A-' %}selected{% endif %} data-i18n="gen_a_f041">A-</option>
+<option value="B+" {% if form_data.get('blood_group') == 'B+' %}selected{% endif %} data-i18n="gen_b_f6fe">B+</option>
+<option value="B-" {% if form_data.get('blood_group') == 'B-' %}selected{% endif %} data-i18n="gen_b_308b">B-</option>
+<option value="AB+" {% if form_data.get('blood_group') == 'AB+' %}selected{% endif %} data-i18n="gen_ab_5653">AB+</option>
+<option value="AB-" {% if form_data.get('blood_group') == 'AB-' %}selected{% endif %} data-i18n="gen_ab_9d30">AB-</option>
+<option value="O+" {% if form_data.get('blood_group') == 'O+' %}selected{% endif %} data-i18n="gen_o_5861">O+</option>
+<option value="O-" {% if form_data.get('blood_group') == 'O-' %}selected{% endif %} data-i18n="gen_o_79e8">O-</option>
+</select>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="gen_height_cm_20fb" style="color: var(--text-secondary, #536174);">Height (cm)</label>
+<input class="form-control" data-i18n-placeholder="reg_ph_height" max="300" min="30" name="height" placeholder="e.g. 175" step="0.1" style="border-color: var(--border-color, #D9E1EA);" type="number" value="{{ form_data.get('height', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="gen_weight_kg_9172" style="color: var(--text-secondary, #536174);">Weight (kg)</label>
+<input class="form-control" data-i18n-placeholder="reg_ph_weight" max="500" min="2" name="weight" placeholder="e.g. 70.5" step="0.1" style="border-color: var(--border-color, #D9E1EA);" type="number" value="{{ form_data.get('weight', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_dob" style="color: var(--text-secondary, #536174);">Date of Birth</label>
+<input class="form-control" name="date_of_birth" style="border-color: var(--border-color, #D9E1EA);" type="date" value="{{ form_data.get('date_of_birth', '') }}"/>
+</div>
+<div class="col-md-6">
+<label class="form-label small fw-medium" data-i18n="reg_label_gender" style="color: var(--text-secondary, #536174);">Gender</label>
+<select class="form-select" name="gender" style="border-color: var(--border-color, #D9E1EA);">
+<option data-i18n="gen_select_optional_51a6" value="">Select (Optional)</option>
+<option value="Male" {% if form_data.get('gender') == 'Male' %}selected{% endif %} data-i18n="reg_gender_male">Male</option>
+<option value="Female" {% if form_data.get('gender') == 'Female' %}selected{% endif %} data-i18n="reg_gender_female">Female</option>
+<option value="Other" {% if form_data.get('gender') == 'Other' %}selected{% endif %} data-i18n="reg_gender_other">Other</option>
+</select>
+</div>
+</div>
+<div class="d-flex gap-2 mt-4">
+<button class="btn btn-outline-secondary py-3 fw-bold px-4" id="btn-back-step2" style="border-radius: 10px; border-color: var(--border-color, #E2E8F0);" type="button">
+<i class="bi bi-arrow-left me-1"></i> Back
+</button>
+<button class="btn text-white py-3 fw-bold flex-grow-1 shadow-sm" id="btn-next-step2" onmouseout="this.style.transform='translateY(0)';" onmouseover="this.style.transform='translateY(-2px)';" style="background-color: var(--primary, #6B46C1); border-radius: 10px; transition: transform 0.2s ease;" type="button">
+Next: Theme & Language <i class="bi bi-arrow-right ms-1"></i>
+</button>
+</div>
+</div>
+
+<!-- STEP 3: THEME & LANGUAGE PREFERENCES -->
+<div class="form-step" id="step3">
+<div class="mb-4">
+<div class="d-flex align-items-center gap-2 mb-1">
+<span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: rgba(107, 70, 193, 0.15); color: var(--primary, #6B46C1);">
+<i class="bi bi-palette-fill"></i>
+</span>
+<h5 class="fw-bold mb-0" style="color: var(--text-main);">Appearance & Language Preferences</h5>
+</div>
+<p class="small text-muted mb-0">Select your preferred viewing theme and primary language for AI health guidance and navigation.</p>
+</div>
+
+<!-- 1. THEME SELECTION -->
+<div class="mb-4">
+<label class="form-label small fw-bold text-uppercase tracking-wide mb-2" style="color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 0.5px;">
+<i class="bi bi-display me-1"></i> 1. Choose Display Theme
+</label>
+<div class="row g-3">
+<!-- Light Mode Card -->
+<div class="col-md-6">
+<div class="theme-card selected" data-theme-val="light" id="theme-card-light">
+<div class="d-flex align-items-center justify-content-between mb-2">
+<div class="d-flex align-items-center gap-2">
+<span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 28px; height: 28px; background: rgba(245, 158, 11, 0.15); color: #D97706;">
+<i class="bi bi-sun-fill fs-6"></i>
+</span>
+<span class="fw-bold" style="color: var(--text-main); font-size: 0.95rem;">Light Mode</span>
+</div>
+<div class="selection-check-indicator">
+<i class="bi bi-check-lg"></i>
+</div>
+</div>
+
+<!-- Light Mode Mockup Frame -->
+<div class="theme-mockup-frame theme-mockup-light">
+<div class="d-flex align-items-center px-2 py-1" style="background: #E2E8F0; border-bottom: 1px solid #CBD5E1; height: 18px;">
+<span style="width: 6px; height: 6px; border-radius: 50%; background: #EF4444; display: inline-block; margin-right: 4px;"></span>
+<span style="width: 6px; height: 6px; border-radius: 50%; background: #F59E0B; display: inline-block; margin-right: 4px;"></span>
+<span style="width: 6px; height: 6px; border-radius: 50%; background: #10B981; display: inline-block; margin-right: 8px;"></span>
+<span style="background: #FFFFFF; border-radius: 3px; height: 9px; width: 85px;"></span>
+</div>
+<div class="d-flex" style="height: 110px;">
+<div class="p-1 d-flex flex-column gap-1" style="width: 28px; background: #EDE9FE; border-right: 1px solid #DDD6FE;">
+<div style="width: 16px; height: 14px; border-radius: 3px; background: #6B46C1;"></div>
+<div style="width: 14px; height: 4px; border-radius: 2px; background: #A78BFA;"></div>
+<div style="width: 14px; height: 4px; border-radius: 2px; background: #CBD5E1;"></div>
+<div style="width: 14px; height: 4px; border-radius: 2px; background: #CBD5E1;"></div>
+</div>
+<div class="p-2 flex-grow-1" style="background: #F8FAFC;">
+<div class="d-flex justify-content-between align-items-center mb-1">
+<span style="font-size: 8px; font-weight: 700; color: #1E293B;">DNA Health Studio</span>
+<span style="background: #0D9488; color: #fff; font-size: 7px; padding: 1px 5px; border-radius: 4px; font-weight: 600;">Optimal</span>
+</div>
+<div class="row g-1">
+<div class="col-7">
+<div class="p-1 rounded bg-white border" style="border-color: #E2E8F0 !important; font-size: 7px;">
+<div style="height: 4px; width: 65%; background: #6B46C1; border-radius: 2px; margin-bottom: 3px;"></div>
+<div style="height: 3px; width: 90%; background: #E2E8F0; border-radius: 2px; margin-bottom: 2px;"></div>
+<div style="height: 3px; width: 50%; background: #E2E8F0; border-radius: 2px;"></div>
+</div>
+</div>
+<div class="col-5">
+<div class="p-1 rounded bg-white border d-flex flex-column justify-content-center align-items-center" style="border-color: #E2E8F0 !important; height: 100%;">
+<i class="bi bi-heart-pulse-fill text-danger" style="font-size: 11px;"></i>
+<span style="font-size: 6px; font-weight: 600; color: #0D9488;">98% Vitals</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<p class="small text-muted mb-0" style="font-size: 0.8rem; line-height: 1.3;">
+Clean, radiant daytime aesthetic with crisp contrast and readability.
+</p>
+</div>
+</div>
+
+<!-- Dark Mode Card -->
+<div class="col-md-6">
+<div class="theme-card" data-theme-val="dark" id="theme-card-dark">
+<div class="d-flex align-items-center justify-content-between mb-2">
+<div class="d-flex align-items-center gap-2">
+<span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 28px; height: 28px; background: rgba(99, 102, 241, 0.15); color: #818CF8;">
+<i class="bi bi-moon-stars-fill fs-6"></i>
+</span>
+<span class="fw-bold" style="color: var(--text-main); font-size: 0.95rem;">Dark Mode</span>
+</div>
+<div class="selection-check-indicator">
+<i class="bi bi-check-lg"></i>
+</div>
+</div>
+
+<!-- Dark Mode Mockup Frame -->
+<div class="theme-mockup-frame theme-mockup-dark">
+<div class="d-flex align-items-center px-2 py-1" style="background: #1E293B; border-bottom: 1px solid #334155; height: 18px;">
+<span style="width: 6px; height: 6px; border-radius: 50%; background: #EF4444; display: inline-block; margin-right: 4px;"></span>
+<span style="width: 6px; height: 6px; border-radius: 50%; background: #F59E0B; display: inline-block; margin-right: 4px;"></span>
+<span style="width: 6px; height: 6px; border-radius: 50%; background: #10B981; display: inline-block; margin-right: 8px;"></span>
+<span style="background: #334155; border-radius: 3px; height: 9px; width: 85px;"></span>
+</div>
+<div class="d-flex" style="height: 110px;">
+<div class="p-1 d-flex flex-column gap-1" style="width: 28px; background: #0B0F17; border-right: 1px solid #1E293B;">
+<div style="width: 16px; height: 14px; border-radius: 3px; background: #8B5CF6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.5);"></div>
+<div style="width: 14px; height: 4px; border-radius: 2px; background: #A78BFA;"></div>
+<div style="width: 14px; height: 4px; border-radius: 2px; background: #334155;"></div>
+<div style="width: 14px; height: 4px; border-radius: 2px; background: #334155;"></div>
+</div>
+<div class="p-2 flex-grow-1" style="background: #0F172A;">
+<div class="d-flex justify-content-between align-items-center mb-1">
+<span style="font-size: 8px; font-weight: 700; color: #F1F5F9;">DNA Health Studio</span>
+<span style="background: #14B8A6; color: #022C22; font-size: 7px; padding: 1px 5px; border-radius: 4px; font-weight: 700; box-shadow: 0 0 6px rgba(20, 184, 166, 0.4);">Optimal</span>
+</div>
+<div class="row g-1">
+<div class="col-7">
+<div class="p-1 rounded border" style="background: #1E293B; border-color: #334155 !important; font-size: 7px;">
+<div style="height: 4px; width: 65%; background: #A78BFA; border-radius: 2px; margin-bottom: 3px; box-shadow: 0 0 4px rgba(167, 139, 250, 0.4);"></div>
+<div style="height: 3px; width: 90%; background: #334155; border-radius: 2px; margin-bottom: 2px;"></div>
+<div style="height: 3px; width: 50%; background: #334155; border-radius: 2px;"></div>
+</div>
+</div>
+<div class="col-5">
+<div class="p-1 rounded border d-flex flex-column justify-content-center align-items-center" style="background: #1E293B; border-color: #334155 !important; height: 100%;">
+<i class="bi bi-heart-pulse-fill text-danger" style="font-size: 11px;"></i>
+<span style="font-size: 6px; font-weight: 600; color: #2DD4BF;">98% Vitals</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<p class="small text-muted mb-0" style="font-size: 0.8rem; line-height: 1.3;">
+Sleek, low-glare midnight palette engineered for visual comfort.
+</p>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 2. LANGUAGE SELECTION -->
+<div class="mb-4">
+<label class="form-label small fw-bold text-uppercase tracking-wide mb-2" style="color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 0.5px;">
+<i class="bi bi-translate me-1"></i> 2. Choose Interface & Translation Language
+</label>
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2 g-md-3" id="language-cards-container">
+<!-- English -->
+<div class="col">
+<div class="lang-card selected" data-lang-val="en">
+<div class="d-flex align-items-center gap-2">
+<span class="badge rounded-pill fw-bold" style="background: rgba(107, 70, 193, 0.15); color: var(--primary, #6B46C1); font-size: 0.75rem; width: 34px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">EN</span>
+<div>
+<div class="fw-bold" style="color: var(--text-main); font-size: 0.9rem;">English</div>
+<small class="text-muted" style="font-size: 0.72rem;">Default</small>
+</div>
+</div>
+<div class="selection-check-indicator">
+<i class="bi bi-check-lg"></i>
+</div>
+</div>
+</div>
+
+<!-- Hindi -->
+<div class="col">
+<div class="lang-card" data-lang-val="hi">
+<div class="d-flex align-items-center gap-2">
+<span class="badge rounded-pill fw-bold" style="background: rgba(249, 115, 22, 0.15); color: #EA580C; font-size: 0.85rem; width: 34px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">अ</span>
+<div>
+<div class="fw-bold" style="color: var(--text-main); font-size: 0.9rem;">हिन्दी</div>
+<small class="text-muted" style="font-size: 0.72rem;">Hindi</small>
+</div>
+</div>
+<div class="selection-check-indicator">
+<i class="bi bi-check-lg"></i>
+</div>
+</div>
+</div>
+
+<!-- Kannada -->
+<div class="col">
+<div class="lang-card" data-lang-val="kn">
+<div class="d-flex align-items-center gap-2">
+<span class="badge rounded-pill fw-bold" style="background: rgba(234, 179, 8, 0.15); color: #CA8A04; font-size: 0.85rem; width: 34px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">ಕ</span>
+<div>
+<div class="fw-bold" style="color: var(--text-main); font-size: 0.9rem;">ಕನ್ನಡ</div>
+<small class="text-muted" style="font-size: 0.72rem;">Kannada</small>
+</div>
+</div>
+<div class="selection-check-indicator">
+<i class="bi bi-check-lg"></i>
+</div>
+</div>
+</div>
+
+<!-- Tamil -->
+<div class="col">
+<div class="lang-card" data-lang-val="ta">
+<div class="d-flex align-items-center gap-2">
+<span class="badge rounded-pill fw-bold" style="background: rgba(13, 148, 136, 0.15); color: #0D9488; font-size: 0.85rem; width: 34px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">த</span>
+<div>
+<div class="fw-bold" style="color: var(--text-main); font-size: 0.9rem;">தமிழ்</div>
+<small class="text-muted" style="font-size: 0.72rem;">Tamil</small>
+</div>
+</div>
+<div class="selection-check-indicator">
+<i class="bi bi-check-lg"></i>
+</div>
+</div>
+</div>
+
+<!-- Telugu -->
+<div class="col">
+<div class="lang-card" data-lang-val="te">
+<div class="d-flex align-items-center gap-2">
+<span class="badge rounded-pill fw-bold" style="background: rgba(59, 130, 246, 0.15); color: #2563EB; font-size: 0.85rem; width: 34px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">తె</span>
+<div>
+<div class="fw-bold" style="color: var(--text-main); font-size: 0.9rem;">తెలుగు</div>
+<small class="text-muted" style="font-size: 0.72rem;">Telugu</small>
+</div>
+</div>
+<div class="selection-check-indicator">
+<i class="bi bi-check-lg"></i>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="d-flex gap-2 mt-4">
+<button class="btn btn-outline-secondary py-3 fw-bold px-4" id="btn-back-step3" style="border-radius: 10px; border-color: var(--border-color, #E2E8F0);" type="button">
+<i class="bi bi-arrow-left me-1"></i> Back
+</button>
+<button class="btn text-white py-3 fw-bold flex-grow-1 shadow-sm" id="btn-submit-step3" onmouseout="this.style.transform='translateY(0)';" onmouseover="this.style.transform='translateY(-2px)';" style="background-color: var(--secondary, #0D9488); border-radius: 10px; transition: transform 0.2s ease;" type="submit">
+Complete Registration <i class="bi bi-check2-circle ms-1"></i>
+</button>
+</div>
+</div>
+
+</form>
+<div class="text-center mt-5 pt-3 border-top small" style="border-color: var(--border-color, #E2E8F0) !important; color: var(--text-secondary, #64748B);">
+<span data-i18n="reg_have_account">Already have an account?</span>
+<a class="fw-bold ms-1 text-decoration-none" data-i18n="welcome_sign_in" href="{{ url_for('auth.login') }}" style="color: var(--secondary, #0D9488);">Login</a>
+</div>
+</div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+
+    const btnNextStep1 = document.getElementById('btn-next-step1');
+    const btnBackStep2 = document.getElementById('btn-back-step2');
+    const btnNextStep2 = document.getElementById('btn-next-step2');
+    const btnBackStep3 = document.getElementById('btn-back-step3');
+
+    const dot1 = document.getElementById('dot-step1');
+    const dot2 = document.getElementById('dot-step2');
+    const dot3 = document.getElementById('dot-step3');
+
+    const text1 = document.getElementById('text-step1');
+    const text2 = document.getElementById('text-step2');
+    const text3 = document.getElementById('text-step3');
+
+    const line1 = document.getElementById('line-step1');
+    const line2 = document.getElementById('line-step2');
+
+    const regContainer = document.getElementById('reg-container');
+    const form = document.getElementById('registration-form');
+
+    const hiddenTheme = document.getElementById('reg_theme');
+    const hiddenLang = document.getElementById('reg_language');
+
+    function goToStep(target) {
+        [step1, step2, step3].forEach(s => s && s.classList.remove('active'));
+        [dot1, dot2, dot3].forEach(d => d && d.classList.remove('active', 'completed'));
+        [text1, text2, text3].forEach(t => t && t.classList.remove('active', 'completed'));
+        [line1, line2].forEach(l => l && l.classList.remove('active'));
+
+        if (target === 1) {
+            step1.classList.add('active');
+            dot1.classList.add('active');
+            text1.classList.add('active');
+            if (regContainer) regContainer.style.maxWidth = '680px';
+        } else if (target === 2) {
+            step2.classList.add('active');
+            dot1.classList.add('completed');
+            text1.classList.add('completed');
+            line1.classList.add('active');
+            dot2.classList.add('active');
+            text2.classList.add('active');
+            if (regContainer) regContainer.style.maxWidth = '680px';
+        } else if (target === 3) {
+            step3.classList.add('active');
+            dot1.classList.add('completed');
+            text1.classList.add('completed');
+            line1.classList.add('active');
+            dot2.classList.add('completed');
+            text2.classList.add('completed');
+            line2.classList.add('active');
+            dot3.classList.add('active');
+            text3.classList.add('active');
+            if (regContainer) regContainer.style.maxWidth = '760px';
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Step 1 -> Step 2
+    btnNextStep1.addEventListener('click', function() {
+        const inputs = step1.querySelectorAll('input[required], textarea[required]');
+        let isValid = true;
+
+        inputs.forEach(input => {
+            if (!input.checkValidity()) {
+                input.reportValidity();
+                isValid = false;
+            }
+        });
+
+        const pwd = document.getElementById('password');
+        const cpwd = document.getElementById('confirm_password');
+        if (pwd && cpwd && pwd.value && cpwd.value && pwd.value !== cpwd.value) {
+            cpwd.setCustomValidity("Passwords do not match");
+            cpwd.reportValidity();
+            isValid = false;
+        } else if (cpwd) {
+            cpwd.setCustomValidity("");
+        }
+
+        if (isValid) {
+            goToStep(2);
+        }
+    });
+
+    // Step 2 -> Step 1
+    btnBackStep2.addEventListener('click', function() {
+        goToStep(1);
+    });
+
+    // Step 2 -> Step 3
+    btnNextStep2.addEventListener('click', function() {
+        const step2Inputs = step2.querySelectorAll('input');
+        let isValid = true;
+        step2Inputs.forEach(input => {
+            if (!input.checkValidity()) {
+                input.reportValidity();
+                isValid = false;
+            }
+        });
+        if (isValid) {
+            goToStep(3);
+        }
+    });
+
+    // Step 3 -> Step 2
+    btnBackStep3.addEventListener('click', function() {
+        goToStep(2);
+    });
+
+    const themeCards = document.querySelectorAll('.theme-card');
+    const langCards = document.querySelectorAll('.lang-card');
+
+    function selectTheme(val, applyImmediately) {
+        if (applyImmediately === undefined) applyImmediately = true;
+        if (!val) val = 'light';
+        if (hiddenTheme) hiddenTheme.value = val;
+        themeCards.forEach(c => {
+            if (c.getAttribute('data-theme-val') === val) {
+                c.classList.add('selected');
+            } else {
+                c.classList.remove('selected');
+            }
+        });
+        if (applyImmediately && window.ThemeManager && window.ThemeManager.setTheme) {
+            window.ThemeManager.setTheme(val);
+        }
+    }
+
+    function selectLanguage(val) {
+        if (!val) val = 'en';
+        if (hiddenLang) hiddenLang.value = val;
+        langCards.forEach(c => {
+            if (c.getAttribute('data-lang-val') === val) {
+                c.classList.add('selected');
+            } else {
+                c.classList.remove('selected');
+            }
+        });
+        try {
+            localStorage.setItem('genomix_language_preference', val);
+            localStorage.setItem('dnaura_language', val);
+        } catch(e) {}
+    }
+
+    // Theme card click listeners
+    themeCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            e.preventDefault();
+            const val = this.getAttribute('data-theme-val');
+            selectTheme(val, true);
+        });
+    });
+
+    // Language card click listeners
+    langCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            e.preventDefault();
+            const val = this.getAttribute('data-lang-val');
+            selectLanguage(val);
+        });
+    });
+
+    // Initialize Theme selection from current active theme
+    const currentTheme = (window.ThemeManager && window.ThemeManager.getTheme) ?
+        window.ThemeManager.getTheme() :
+        (localStorage.getItem('dnaura_theme_preference') || 'light');
+    selectTheme(currentTheme, false);
+
+    // Initialize Language selection from current stored language
+    const currentLang = localStorage.getItem('genomix_language_preference') ||
+        localStorage.getItem('dnaura_language') ||
+        document.documentElement.getAttribute('lang') || 'en';
+    selectLanguage(currentLang);
+
+    // Form submit handler to persist preferences in localStorage
+    form.addEventListener('submit', function() {
+        const theme = (hiddenTheme && hiddenTheme.value) || 'light';
+        const lang = (hiddenLang && hiddenLang.value) || 'en';
+        try {
+            localStorage.setItem('dnaura_theme_preference', theme);
+            localStorage.setItem('dnaura_theme', theme);
+            localStorage.setItem('genomix_language_preference', lang);
+            localStorage.setItem('dnaura_language', lang);
+        } catch(e) {}
+    });
+});
+</script>
+{% endblock %}

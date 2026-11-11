@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Medical Specialists — {{ hospital.name }} — DNAura{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ==========================================================================
+   DNAura Unified Design System — Medical Specialists View
+   ========================================================================== */
+
+.doctor-clean-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.doctor-clean-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(23, 105, 170, 0.1) !important;
+    border-color: var(--primary);
+}
+
+.doctor-avatar-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+
+.badge-specialty {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.badge-days {
+    background: var(--bg-surface-elevated, #F1F5F9);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+}
+
+.modal-content {
+    background: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-color) !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Breadcrumb & Header -->
+    <div class="mb-4">
+        <a class="text-decoration-none small fw-semibold mb-2 d-inline-flex align-items-center gap-1.5" href="{{ url_for('hospitals.index') }}" style="color: var(--primary);">
+            <i class="bi bi-arrow-left"></i> <span>Back to Hospitals Search</span>
+        </a>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <h2 class="fw-bold mb-1" style="color: var(--text-main); font-size: 1.65rem;">
+                    <i class="bi bi-person-badge" style="color: var(--primary);"></i> Medical Specialists
+                </h2>
+                <p class="small mb-0" style="color: var(--text-secondary);">
+                    <i class="bi bi-building me-1" style="color: var(--primary);"></i>{{ hospital.name }} &mdash; {{ hospital.address }}
+                </p>
+            </div>
+            <span class="badge px-3 py-2 fw-semibold" style="font-size: 0.82rem; background: var(--primary-light); color: var(--primary); border: 1px solid var(--border-color); border-radius: 20px;">
+                <i class="bi bi-patch-check-fill me-1"></i> Hospital Faculty &amp; Specialists
+            </span>
+        </div>
+    </div>
+
+    <!-- 2-COLUMN DOCTOR CARDS GRID -->
+    <div class="row g-4 mb-4">
+        {% if doctors %}
+            {% for doc in doctors %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card p-4 doctor-clean-card h-100 shadow-sm">
+                    <div class="d-flex flex-column h-100 justify-content-between">
+                        <!-- Top Info -->
+                        <div>
+                            <!-- Doctor Header -->
+                            <div class="d-flex align-items-start gap-3 mb-3">
+                                <div class="doctor-avatar-circle shadow-sm">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="fw-bold mb-1" style="color: var(--text-main); font-size: 1.15rem;">
+                                        {{ doc.full_name }}
+                                    </h5>
+                                    <span class="badge-specialty d-inline-block">
+                                        <i class="bi bi-patch-check-fill"></i> {{ doc.specialty }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Hospital & Location -->
+                            <div class="mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                                <div class="fw-semibold small mb-1" style="color: var(--text-main);">
+                                    <i class="bi bi-building me-1" style="color: var(--primary);"></i> {{ hospital.name }}
+                                </div>
+                                <div class="small" style="color: var(--text-secondary);">
+                                    <i class="bi bi-geo-alt me-1" style="color: #D97706;"></i> {{ hospital.city }}{% if hospital.state %}, {{ hospital.state }}{% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Credentials & Availability -->
+                            <div class="mb-3 small">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span style="color: var(--text-secondary);">Qualification:</span>
+                                    <span class="fw-medium text-end ms-2" style="color: var(--text-main);">{{ doc.qualification_short or doc.qualification }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span style="color: var(--text-secondary);">Experience:</span>
+                                    <span class="fw-medium" style="color: var(--text-main);">{{ doc.experience_years }} years</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2 align-items-center">
+                                    <span style="color: var(--text-secondary);">Available:</span>
+                                    <span class="badge-days">
+                                        <i class="bi bi-calendar3 me-1"></i> {{ doc.availability_days }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top" style="border-color: var(--border-color) !important;">
+                                    <span style="color: var(--text-secondary);">Consultation Fee:</span>
+                                    <span class="fw-bold" style="color: #15803D; font-size: 0.98rem;">
+                                        {% if doc.consultation_fee %}
+                                            ₹{{ doc.consultation_fee }} per visit
+                                        {% else %}
+                                            <span class="text-muted fw-normal small">Fee not available</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 pt-2 mt-auto">
+                            <button type="button" class="btn btn-outline-custom btn-sm px-3 py-2 fw-medium flex-grow-1" data-bs-toggle="modal" data-bs-target="#profileModal{{ doc.id }}">
+                                <i class="bi bi-person-badge me-1"></i> Profile
+                            </button>
+                            <a class="btn btn-primary-gradient btn-sm px-3 py-2 fw-medium flex-grow-1 text-center" href="{{ url_for('appointments.book', hospital_id=hospital.id, doctor_id=doc.id) }}">
+                                <i class="bi bi-calendar-check me-1"></i> Book
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFILE MODAL FOR THIS DOCTOR -->
+                <div class="modal fade" id="profileModal{{ doc.id }}" tabindex="-1" aria-labelledby="profileModalLabel{{ doc.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow" style="border-radius: 14px;">
+                            <div class="modal-header border-0 pb-0">
+                                <h5 class="modal-title fw-bold" id="profileModalLabel{{ doc.id }}" style="color: var(--text-main);">
+                                    Doctor Profile
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body pt-3">
+                                <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                                    <div class="doctor-avatar-circle">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold mb-0" style="color: var(--text-main);">{{ doc.full_name }}</h5>
+                                        <span class="badge-specialty mt-1">{{ doc.specialty }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-secondary);">Hospital Affiliation</div>
+                                    <div class="fw-medium" style="color: var(--text-main);">{{ hospital.name }}</div>
+                                    <div class="small" style="color: var(--text-secondary);"><i class="bi bi-geo-alt me-1" style="color: #D97706;"></i>{{ hospital.address }}</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-secondary);">Qualifications &amp; Experience</div>
+                                    <div class="fw-medium" style="color: var(--text-main);">{{ doc.qualification }}</div>
+                                    <div class="small" style="color: var(--text-secondary);">{{ doc.experience_years }} years of clinical practice</div>
+                                </div>
+
+                                {% if doc.bio %}
+                                <div class="mb-3">
+                                    <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-secondary);">About Specialist</div>
+                                    <p class="small mb-0" style="color: var(--text-main); line-height: 1.5;">{{ doc.bio }}</p>
+                                </div>
+                                {% endif %}
+
+                                <div class="p-3 rounded-3 mb-3" style="background: var(--primary-light); border: 1px solid var(--border-color); border-radius: 12px;">
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span style="color: var(--text-secondary);">Consultation Days:</span>
+                                        <span class="fw-semibold" style="color: var(--text-main);">{{ doc.availability_days }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span style="color: var(--text-secondary);">Working Hours:</span>
+                                        <span class="fw-semibold" style="color: var(--text-main);">{{ doc.availability_time }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between small">
+                                        <span style="color: var(--text-secondary);">Consultation Fee:</span>
+                                        <span class="fw-bold" style="color: #15803D;">
+                                            {% if doc.consultation_fee %}₹{{ doc.consultation_fee }} per visit{% else %}Fee not available{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                                <a class="btn btn-primary-gradient px-4" href="{{ url_for('appointments.book', hospital_id=hospital.id, doctor_id=doc.id) }}">
+                                    <i class="bi bi-calendar-check me-1"></i> Book Appointment
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-person-x fs-1 text-muted mb-3 d-block"></i>
+                <h5 class="fw-bold" style="color: var(--text-main);">No Doctor Profiles Available</h5>
+                <p class="small" style="color: var(--text-secondary);">No medical specialists currently registered for this hospital.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

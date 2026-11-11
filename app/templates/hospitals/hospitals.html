@@ -1,0 +1,1627 @@
+{% extends "base.html" %}
+
+{% block title %}Hospitals &amp; Doctors — DNAura{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS for In-Website OpenStreetMap -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+.hospital-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(250, 248, 243, 0.85);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.hospital-map-container {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+.hospital-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--border-color) !important;
+}
+.hospital-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(79, 111, 82, 0.08) !important;
+}
+.ai-step-item {
+    transition: all 0.25s ease;
+    border: 1px solid var(--border-color) !important;
+}
+.ai-step-item.active {
+    border-color: var(--primary) !important;
+    background: var(--bg-main) !important;
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 6px rgba(79, 111, 82, 0.12);
+}
+.ai-step-item.completed {
+    border-color: #2E7D5B !important;
+    background: #E8F5E9 !important;
+    color: #2E7D5B !important;
+    font-weight: 600 !important;
+}
+.btn-sage {
+    background-color: var(--primary) !important;
+    color: #FFFFFF !important;
+    border: 1px solid var(--primary) !important;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+.btn-sage:hover {
+    background-color: var(--primary) !important;
+    color: #FFFFFF !important;
+}
+.btn-outline-sage {
+    background-color: transparent !important;
+    color: var(--primary) !important;
+    border: 1px solid var(--primary) !important;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+.btn-outline-sage:hover {
+    background-color: var(--bg-main) !important;
+    color: var(--primary) !important;
+}
+.doctor-avatar-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-main);
+    color: var(--primary);
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    border: 1px solid #D2DFD4;
+}
+.badge-specialty {
+    background: var(--bg-main);
+    color: var(--primary);
+    border: 1px solid #C9DACB;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+}
+.badge-days {
+    background: #F4F7F4;
+    color: var(--primary);
+    border: 1px solid #D6E3D7;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+}
+.nav-pills .nav-link.active {
+    background-color: var(--primary) !important;
+}
+.nav-pills .nav-link {
+    color: var(--primary) !important;
+}
+.ai-pulse-mic {
+    animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+@keyframes pulse-ring {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 111, 82, 0.6); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(79, 111, 82, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 111, 82, 0); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<span data-i18n="hosp_page_title" id="page-i18n-title" style="display:none;"></span>
+<!-- Loading State Overlay (Hidden by default) -->
+<div class="hospital-loading-overlay d-none" id="hospital-loading-state">
+<div class="spinner-border mb-3" role="status" style="width: 3rem; height: 3rem; color: var(--primary, #1769AA);">
+<span class="visually-hidden" data-i18n="js_loading">Loading...</span>
+</div>
+<h5 class="fw-bold mb-1" data-i18n="hosp_searching" style="color: var(--text-main, #172033);">Finding nearby hospitals...</h5>
+<p class="small" data-i18n="gen_using_your_location__be6d" style="color: var(--text-secondary, #536174);">Using your location to find the closest healthcare facilities</p>
+</div>
+<div class="container-fluid px-0">
+<!-- Header -->
+<div class="mb-4 d-flex justify-content-between align-items-end flex-wrap gap-3">
+<div>
+<h2 class="fw-bold mb-1" style="font-size: 1.75rem; color: var(--text-main);">
+<i class="bi bi-hospital" style="color: var(--primary);"></i> <span data-i18n="sidebar_hospital_rec">Hospitals &amp; Doctors</span>
+</h2>
+<p class="small mb-0" style="color: var(--text-muted);" data-i18n="hosp_subtitle">Find the closest medical centers, hospitals, and available doctors.</p>
+</div>
+<div class="d-flex flex-wrap gap-2">
+<a class="btn btn-outline-sage fw-medium px-3 py-2" href="{{ url_for('hospitals.index', mode='registered') }}" title="Use your registered account address" data-i18n-title="hosp_title_reg_address">
+<i class="bi bi-house-door-fill me-1"></i> <span data-i18n="hosp_btn_reg_address">Use Registered Address</span>
+</a>
+<button class="btn btn-sage fw-medium px-3 py-2" data-i18n="gen_use_my_current_locat_ca87" id="btn-use-current-location">
+<i class="bi bi-geo-alt-fill me-1"></i> Use My Current Location
+</button>
+</div>
+</div>
+<!-- FIND A HOSPITAL SECTION -->
+<div class="card border-0 shadow-sm p-4 mb-4" id="ai-hospital-section" style="background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); border-left: 4px solid var(--primary) !important;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center justify-content-center rounded-3" style="width: 42px; height: 42px; background: var(--bg-main); color: var(--primary);">
+                <i class="bi bi-search-heart fs-4"></i>
+            </div>
+            <div>
+                <h5 class="fw-bold mb-0" style="color: var(--text-main); letter-spacing: 0.5px;">FIND A HOSPITAL &amp; SPECIALIST</h5>
+                <p class="small mb-0" style="color: var(--text-muted);">Search hospitals and medical specialists across India using voice search or medical report PDF</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dual Input Methods: Speech to Text OR Upload PDF -->
+    <div class="row g-3 align-items-center my-1">
+        <!-- Option 1: Speech to Text -->
+        <div class="col-md-5">
+            <div class="p-3 rounded-3 text-center h-100 d-flex flex-column justify-content-center align-items-center" style="background: var(--bg-main); border: 1px solid var(--border-color);">
+                <button type="button" class="btn btn-sage d-inline-flex align-items-center gap-2 px-4 py-2 fw-semibold mb-1" id="btn-ai-speech">
+                    <i class="bi bi-mic-fill fs-5" id="ai-speech-mic-icon"></i>
+                    <span id="ai-speech-btn-label">🎙 Speak your requirement</span>
+                </button>
+                <div class="small fw-semibold mt-1" style="color: var(--text-main);">Speak your requirement</div>
+                <div class="form-text small" style="font-size: 0.75rem; color: var(--text-muted);">
+                    e.g. &ldquo;Hospitals in Kolkata&rdquo;, &ldquo;Hospitals in Bihar&rdquo;, or &ldquo;Find an oncologist in Mumbai&rdquo;
+                </div>
+            </div>
+        </div>
+
+        <!-- OR Divider -->
+        <div class="col-md-2 text-center my-2 my-md-0">
+            <div class="d-flex align-items-center justify-content-center">
+                <span class="badge rounded-pill px-3 py-2 fw-bold" style="background: var(--bg-main); color: var(--primary); border: 1px solid #C9DACB; font-size: 0.85rem; letter-spacing: 1px;">OR</span>
+            </div>
+        </div>
+
+        <!-- Option 2: Upload PDF -->
+        <div class="col-md-5">
+            <div class="p-3 rounded-3 text-center h-100 d-flex flex-column justify-content-center align-items-center" style="background: var(--bg-main); border: 1px solid var(--border-color);">
+                <input type="file" id="ai-pdf-file-input" accept=".pdf" class="d-none">
+                <button type="button" class="btn btn-outline-sage d-inline-flex align-items-center gap-2 px-4 py-2 fw-semibold mb-1" id="btn-ai-pdf-upload">
+                    <i class="bi bi-file-earmark-pdf-fill fs-5" style="color: var(--primary);"></i>
+                    <span id="ai-pdf-btn-label">📄 Upload PDF</span>
+                </button>
+                <div class="small fw-semibold mt-1" style="color: var(--text-main);">Upload your medical/report PDF</div>
+                <div class="form-text small" style="font-size: 0.75rem; color: var(--text-muted);">
+                    Extracts clinical specialty &amp; location to match top cancer centers
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Speech Transcript & Search Bar -->
+    <div id="ai-speech-status-bar" class="mt-3 p-3 rounded-3" style="background: var(--bg-main); border: 1px solid var(--border-color);">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="spinner-grow spinner-grow-sm text-secondary" id="ai-speech-pulse-dot" role="status"></span>
+                <span class="fw-semibold small" style="color: var(--text-main);" id="ai-speech-status-text">Speak requirement via mic above, or type below:</span>
+            </div>
+            <div class="d-flex gap-1 flex-wrap">
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" onclick="setAndRunQuery('Hospitals in Kolkata')">Kolkata</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" onclick="setAndRunQuery('Hospitals in Bihar')">Bihar</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" onclick="setAndRunQuery('Find cancer hospitals in Mumbai')">Mumbai</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" onclick="setAndRunQuery('Find hospitals in Bengaluru')">Bengaluru</button>
+            </div>
+        </div>
+        <div class="input-group input-group-sm">
+            <button type="button" class="btn btn-light bg-white border-end-0 d-flex align-items-center justify-content-center px-2.5" id="btn-ai-input-mic" title="Voice Search (Click microphone to speak)" style="border: 1px solid var(--border-color); border-right: none; cursor: pointer;" aria-label="Speech to text search">
+                <i class="bi bi-mic-fill" id="ai-input-mic-indicator" style="font-size: 0.95rem; color: var(--primary);"></i>
+            </button>
+            <input type="text" class="form-control border-start-0 border-end-0" id="ai-speech-transcript-input" placeholder="Speak your requirement or type here (e.g. 'Hospitals in Kolkata')..." style="border-color: var(--border-color); font-size: 0.9rem;">
+            <button class="btn btn-sage px-3 fw-medium" type="button" id="btn-ai-submit-query">
+                <i class="bi bi-search me-1"></i> Search
+            </button>
+        </div>
+    </div>
+
+    <!-- STEPPER: Progress messages after input -->
+    <div id="ai-agent-stepper" class="d-none mt-4 p-3 rounded-3" style="background: var(--bg-surface-elevated, #F1F5F9); border: 1px solid var(--border-color, #D9E1EA);">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="small fw-bold text-uppercase" style="letter-spacing: 0.5px; color: var(--primary, #1769AA);">
+                <i class="bi bi-cpu-fill me-1"></i> AI Hospital Agent Workflow
+            </span>
+            <span class="badge" id="ai-stepper-percentage" style="background: #E3F2FD; color: #1769AA;">Initializing...</span>
+        </div>
+        <div class="row g-2 text-start">
+            <div class="col-sm-6 col-md-3">
+                <div class="p-2 rounded bg-white border d-flex align-items-center gap-2 ai-step-item" id="ai-step-1">
+                    <span class="ai-step-icon"><i class="bi bi-circle text-muted"></i></span>
+                    <span class="small fw-medium">Understanding your request...</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <div class="p-2 rounded bg-white border d-flex align-items-center gap-2 ai-step-item" id="ai-step-2">
+                    <span class="ai-step-icon"><i class="bi bi-circle text-muted"></i></span>
+                    <span class="small fw-medium">Searching hospitals...</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <div class="p-2 rounded bg-white border d-flex align-items-center gap-2 ai-step-item" id="ai-step-3">
+                    <span class="ai-step-icon"><i class="bi bi-circle text-muted"></i></span>
+                    <span class="small fw-medium">Finding relevant doctors...</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <div class="p-2 rounded bg-white border d-flex align-items-center gap-2 ai-step-item" id="ai-step-4">
+                    <span class="ai-step-icon"><i class="bi bi-circle text-muted"></i></span>
+                    <span class="small fw-medium">Preparing recommendations...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI RECOMMENDATIONS RESULTS CONTAINER -->
+    <div id="ai-results-container" class="d-none mt-4 pt-3 border-top">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h6 class="fw-bold mb-0" style="color: var(--text-main, #172033);" id="ai-results-title">
+                    <i class="bi bi-hospital text-primary me-1"></i> Hospital &amp; Specialist Recommendations
+                </h6>
+                <p class="small text-muted mb-0" id="ai-results-subtitle">Healthcare centers and specialists matching your requested location</p>
+            </div>
+            <ul class="nav nav-pills" id="ai-view-tabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active py-1.5 px-3 small fw-semibold" id="tab-hospitals-btn" type="button" onclick="switchAITab('hospitals')">
+                        <i class="bi bi-hospital me-1"></i> Hospital Cards (<span id="ai-hosp-count">0</span>)
+                    </button>
+                </li>
+                <li class="nav-item ms-2">
+                    <button class="nav-link py-1.5 px-3 small fw-semibold" id="tab-doctors-btn" type="button" onclick="switchAITab('doctors')">
+                        <i class="bi bi-person-badge me-1"></i> Doctor Cards (<span id="ai-doc-count">0</span>)
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Non-diagnostic safety advisory message -->
+        <div id="ai-non-diagnostic-alert" class="alert alert-info py-2 px-3 small d-none mb-3" style="border-radius: 8px;">
+            <i class="bi bi-shield-check me-1"></i> <span id="ai-non-diagnostic-text"></span>
+        </div>
+
+        <!-- HOSPITAL CARDS VIEW -->
+        <div id="ai-hospitals-view">
+            <div class="row g-3" id="ai-hospital-cards-grid"></div>
+        </div>
+
+        <!-- DOCTOR CARDS VIEW -->
+        <div id="ai-doctors-view" class="d-none">
+            <div class="row g-3" id="ai-doctor-cards-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- LOWER HOSPITAL-LOCATION SECTION (Controlled by showNearbyLocationSection boolean state) -->
+<div id="nearby-location-section" class="d-none">
+    <!-- 1. Registered Location / location information & Search Bar -->
+    <div class="card border-0 shadow-sm p-3 mb-4" id="nearby-location-info-card" style="background: var(--bg-card, #FFFFFF); border-radius: 12px;">
+        <form action="{{ url_for('hospitals.index') }}" id="hospital-search-form" method="GET">
+            <label class="form-label small fw-medium mb-1" data-i18n="gen_search_by_address_fa_ddd6" style="color: var(--text-secondary, #536174);">Search by Address or City (Option 3 — Manual Search)</label>
+            <div class="row g-2 align-items-center">
+                <div class="col-md-9 col-sm-8">
+                    <div class="input-group">
+                        <span class="input-group-text" style="background: var(--bg-surface-elevated, #F1F5F9); border-color: var(--border-color, #D9E1EA); color: var(--primary, #1769AA);"><i class="bi bi-geo-alt"></i></span>
+                        <input class="form-control" data-i18n-placeholder="hosp_ph_search" id="hospital-location-input" name="location" placeholder="City, State, or Address (e.g. Manipal, Mangalore, Bengaluru)" required="" style="border-color: var(--border-color, #D9E1EA);" type="text" value="{{ search_location }}"/>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-4">
+                    <button class="btn w-100 py-2 fw-medium btn-outline-primary text-nowrap" data-i18n="gen_search_address_57da" style="border-radius: 8px;" type="submit">
+                        <i class="bi bi-search me-1"></i> Search Location
+                    </button>
+                </div>
+            </div>
+            <div class="form-text mt-2 d-flex align-items-center justify-content-between flex-wrap gap-1" style="color: var(--text-muted, #718096); font-size: 0.75rem;">
+                <span><span data-i18n="hosp_active_mode">Active Mode:</span> <strong class="text-primary" data-i18n="hosp_mode_{{ location_mode }}">{{ location_mode|upper }} LOCATION</strong></span>
+                {% if registered_address %}
+                <span><span data-i18n="hosp_reg_address">Registered Address:</span> <em>{{ registered_address }}</em></span>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <div class="row g-4">
+        <!-- 2. INTERACTIVE MAP CONTAINER -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100 p-3" style="background: var(--bg-card, #FFFFFF); border-radius: 12px;">
+                <div class="mb-2 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold small" data-i18n="gen_interactive_map_89d3" style="color: var(--text-main, #172033);"><i class="bi bi-map-fill me-1" style="color: var(--primary, #1769AA);"></i> Interactive Map</span>
+                </div>
+                <div class="hospital-map-container mt-1" id="hospital-map" style="min-height: 500px; width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- 3. NEARBY HOSPITALS LISTING -->
+        <div class="col-lg-7">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0" data-i18n="gen_nearby_hospitals_b906" style="color: var(--text-main, #172033);">Nearby Hospitals</h5>
+                <span class="badge" data-i18n="gen_sorted_by_closest_dc13" style="background: #E3F2FD; color: #1769AA; border: 1px solid #BBDEFB;">Sorted by closest</span>
+            </div>
+            <div class="row g-3" id="hospitals-list-container">
+                {% if hospitals %}
+                    {% for h in hospitals %}
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm p-3 hospital-card" style="background: var(--bg-card, #FFFFFF); border-radius: 12px;">
+                            <div class="d-flex flex-column flex-sm-row justify-content-between gap-3">
+                                <div class="d-flex gap-3">
+                                    <div class="d-flex align-items-center justify-content-center rounded" style="width: 48px; height: 48px; background: #E8F5E9; color: #2E7D5B;">
+                                        <i class="bi bi-hospital fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1" style="color: var(--text-main, #172033); font-size: 1.1rem;">{{ h.name }}</h6>
+                                        <p class="small mb-2" style="color: var(--text-secondary, #536174);"><i class="bi bi-geo-alt me-1 text-danger"></i>{{ h.address }}</p>
+                                        <div class="d-flex flex-wrap gap-2 mb-2" style="font-size:0.75rem;">
+                                            {% if h.phone %}
+                                            <span class="badge" style="background: var(--bg-surface-elevated, #F1F5F9); color: var(--text-secondary, #536174); border: 1px solid var(--border-color, #D9E1EA);"><i class="bi bi-telephone me-1"></i>{{ h.phone }}</span>
+                                            {% endif %}
+                                            {% if h.opening_hours %}
+                                            <span class="badge" style="background: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2;"><i class="bi bi-clock me-1"></i>{{ h.opening_hours }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column align-items-sm-end justify-content-between gap-2">
+                                    <span class="badge px-3 py-1 fw-semibold" style="font-size: 0.8rem; background: #E0F2F1; color: #00695C; border: 1px solid #B2DFDB;">
+                                        <i class="bi bi-signpost-split me-1"></i>{{ h.distance_km }} <span data-i18n="hosp_km_away">km away</span>
+                                    </span>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <!-- 4. Directions / How to Reach button (Google Maps India-wide) -->
+                                        {% if h.lat and h.lng %}
+                                        <a class="btn btn-sm btn-outline-primary" data-i18n="hosp_directions" href="https://www.google.com/maps/dir/?api=1&amp;destination={{ h.lat }},{{ h.lng }}" style="border-radius: 6px;" target="_blank" title="Get turn-by-turn route on Google Maps">
+                                            <i class="bi bi-sign-turn-right-fill me-1"></i> Directions / How to Reach
+                                        </a>
+                                        {% else %}
+                                        <a class="btn btn-sm btn-outline-primary" data-i18n="hosp_directions" href="https://www.google.com/maps/dir/?api=1&amp;destination={{ (h.name ~ ', ' ~ (h.address or '') ~ ' ' ~ (h.city or ''))|urlencode }}" style="border-radius: 6px;" target="_blank" title="Get turn-by-turn route on Google Maps">
+                                            <i class="bi bi-sign-turn-right-fill me-1"></i> Directions / How to Reach
+                                        </a>
+                                        {% endif %}
+                                        <!-- 5. View Doctors -->
+                                        {% if h.db_id %}
+                                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('hospitals.doctors', hospital_id=h.db_id) }}">
+                                            <i class="bi bi-people me-1"></i> View Doctors
+                                        </a>
+                                        <!-- 6. Book Appointment -->
+                                        <a class="btn btn-sm text-white fw-medium" href="{{ url_for('appointments.book', hospital_id=h.db_id) }}" style="background-color: var(--primary, #1769AA);">
+                                            <i class="bi bi-calendar-plus me-1"></i> Book Appointment
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty State Handling -->
+<div class="col-12 text-center py-5">
+<i class="bi bi-geo-alt fs-1 text-warning mb-3 d-block"></i>
+<h5 class="fw-bold" data-i18n="gen_no_hospitals_found_n_3c6d" style="color: var(--text-main, #172033);">No hospitals found nearby</h5>
+<p class="small mb-3 mx-auto" data-i18n="gen_we_could_not_locate__b4db" style="color: var(--text-secondary, #536174); max-width: 400px;">We could not locate nearby medical facilities near your current location. Please try searching a different address.</p>
+<button class="btn btn-sm btn-outline-primary px-4 py-2" data-i18n="gen_enable_location_acce_b5bb" id="btn-empty-state-location" style="border-color: var(--border-color, #D9E1EA);">
+<i class="bi bi-crosshair me-1"></i> Enable Location Access
+                        </button>
+</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div><!-- end #nearby-location-section -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JavaScript for In-Website Interactive Map -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let userCoords = {{ user_coords|tojson if user_coords else 'null' }};
+    let hospitals = {{ hospitals|tojson if hospitals else '[]' }};
+    
+    let map = null;
+    let markersLayer = null;
+
+    // =========================================================================
+    // INTENT DETECTION & CONDITIONAL VISIBILITY STATE FOR LOWER LOCATION SECTION
+    // =========================================================================
+    let showNearbyLocationSection = false;
+
+    function detectNearbyLocationIntent(text) {
+        if (!text || typeof text !== 'string') return false;
+        const clean = text.toLowerCase().trim();
+
+        // Exact nearby intent phrases as required:
+        // "near me", "near my location", "nearby", "close to me", "around me", "near my current location", etc.
+        const nearbyPhrases = [
+            "near me",
+            "near my location",
+            "near our location",
+            "near the location",
+            "near current location",
+            "near my current location",
+            "near registered location",
+            "near my registered location",
+            "nearby",
+            "nearby hospitals",
+            "close to me",
+            "around me",
+            "nearest",
+            "closest to me",
+            "close by",
+            "near here",
+            "hospitals near me",
+            "hospitals near my location",
+            "show hospitals near",
+            "find hospitals near",
+            "show hospitals close",
+            "find hospitals close",
+            "मेरे पास",
+            "ನನ್ನ ಹತ್ತಿರ",
+            "ಹತ್ತಿರದ"
+        ];
+
+        return nearbyPhrases.some(phrase => clean.includes(phrase));
+    }
+
+    function updateNearbyLocationSectionVisibility() {
+        const nearbySection = document.getElementById('nearby-location-section');
+        if (!nearbySection) return;
+
+        if (showNearbyLocationSection) {
+            nearbySection.classList.remove('d-none');
+            // Ensure Leaflet recalculates dimensions once container is visible
+            if (map) {
+                setTimeout(function() {
+                    map.invalidateSize();
+                    if (userCoords) {
+                        const lat = userCoords.lat !== undefined ? userCoords.lat : userCoords.latitude;
+                        const lng = userCoords.lng !== undefined ? userCoords.lng : userCoords.longitude;
+                        if (lat && lng) map.setView([lat, lng]);
+                    }
+                }, 200);
+            } else if (typeof initMap === 'function' && userCoords) {
+                initMap(userCoords, hospitals);
+            }
+        } else {
+            nearbySection.classList.add('d-none');
+        }
+    }
+
+    // Check if initial load was an explicit location request (e.g. ?mode=registered or ?mode=current)
+    const initialUrlParams = new URLSearchParams(window.location.search);
+    if (initialUrlParams.get('mode') === 'registered' || initialUrlParams.get('mode') === 'current') {
+        showNearbyLocationSection = true;
+    } else {
+        showNearbyLocationSection = false;
+    }
+    updateNearbyLocationSectionVisibility();
+
+    function getText(key, fallback) {
+        if (window.LanguageManager && typeof window.LanguageManager.getText === 'function') {
+            return window.LanguageManager.getText(key, fallback);
+        }
+        return fallback;
+    }
+    
+    function initMap(centerCoords, hospitalsData) {
+        const mapEl = document.getElementById('hospital-map');
+        if (!mapEl) return;
+
+        const currentHospitals = hospitalsData || hospitals || [];
+
+        if (!centerCoords) {
+            mapEl.innerHTML = '<div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted small p-4 text-center"><i class="bi bi-map-fill fs-2 mb-2" style="color: var(--border-color, #D9E1EA);"></i><span data-i18n="hosp_map_requires">Location coordinates required to display map</span></div>';
+            if (window.LanguageManager && window.LanguageManager.applyTranslations) window.LanguageManager.applyTranslations();
+            return;
+        }
+
+        if (typeof L === 'undefined') {
+            mapEl.innerHTML = '<div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted small p-4 text-center"><i class="bi bi-map-fill fs-2 mb-2" style="color: var(--primary, #1769AA);"></i><span>Interactive map view</span></div>';
+            if (window.LanguageManager && window.LanguageManager.applyTranslations) window.LanguageManager.applyTranslations();
+            return;
+        }
+
+        const lat = centerCoords.lat !== undefined ? centerCoords.lat : centerCoords.latitude;
+        const lng = centerCoords.lng !== undefined ? centerCoords.lng : centerCoords.longitude;
+
+        if (map) {
+            try { map.remove(); } catch (e) {}
+            map = null;
+        }
+
+        map = L.map('hospital-map').setView([lat, lng], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        markersLayer = L.featureGroup().addTo(map);
+
+        // Add user location marker
+        const userLocTitle = getText('hosp_your_location', 'Your Location');
+        const userMarker = L.circleMarker([lat, lng], {
+            radius: 9,
+            fillColor: '#E65100',
+            color: '#FFFFFF',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 1
+        }).bindPopup(`<strong>${userLocTitle}</strong>`);
+        markersLayer.addLayer(userMarker);
+
+        // Add hospital markers across India
+        currentHospitals.forEach(h => {
+            const hLat = h.lat !== undefined ? h.lat : h.latitude;
+            const hLng = h.lng !== undefined ? h.lng : h.longitude;
+            if (hLat && hLng) {
+                const hMarker = L.circleMarker([hLat, hLng], {
+                    radius: 8,
+                    fillColor: '#1769AA',
+                    color: '#FFFFFF',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.95
+                });
+
+                const kmAwayText = getText('hosp_km_away', 'km away');
+                const getDirectionsText = getText('hosp_get_directions', 'Directions / How to Reach');
+                const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${hLat},${hLng}`;
+
+                hMarker.bindPopup(`
+                    <div style="font-family: inherit; font-size: 0.85rem; padding: 4px; min-width: 180px;">
+                        <strong style="color: #172033; font-size: 0.95rem;">${h.name}</strong><br/>
+                        <span style="color: #536174; font-size: 0.78rem;">${h.address || ''}</span><br/>
+                        ${h.distance_km ? `<span class="badge" style="background:#E0F2F1;color:#00695C;margin: 4px 0; display: inline-block;">${h.distance_km} ${kmAwayText}</span><br/>` : ''}
+                        <a href="${dirUrl}" target="_blank" class="btn btn-sm text-white mt-1" style="background-color: #1769AA; padding: 4px 10px; font-size: 0.78rem; border-radius: 6px; text-decoration: none; display: inline-block;">
+                            <i class="bi bi-sign-turn-right-fill me-1"></i> ${getDirectionsText}
+                        </a>
+                    </div>
+                `);
+
+                markersLayer.addLayer(hMarker);
+            }
+        });
+
+        if (currentHospitals.length > 0 && markersLayer.getLayers().length > 0) {
+            try {
+                map.fitBounds(markersLayer.getBounds().pad(0.15));
+            } catch (e) {}
+        }
+    }
+
+    initMap(userCoords, hospitals);
+
+    function renderHospitalsUI(coords, hospitalsData, searchLocation) {
+        userCoords = coords;
+        hospitals = hospitalsData;
+
+        initMap(coords, hospitalsData);
+
+        if (searchLocation) {
+            const input = document.getElementById('hospital-location-input');
+            if (input) input.value = searchLocation;
+        }
+
+        const container = document.getElementById('hospitals-list-container');
+        if (!container) return;
+
+        if (!hospitalsData || hospitalsData.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-geo-alt fs-1 text-warning mb-3 d-block"></i>
+                    <h5 class="fw-bold" data-i18n="gen_no_hospitals_found_n_3c6d" style="color: var(--text-main, #172033);">No hospitals found nearby</h5>
+                    <p class="small mb-3 mx-auto" data-i18n="gen_we_could_not_locate__b4db" style="color: var(--text-secondary, #536174); max-width: 400px;">We could not locate nearby medical facilities near your current location. Please try searching a different address.</p>
+                    <button class="btn btn-sm btn-outline-primary px-4 py-2" data-i18n="gen_enable_location_acce_b5bb" id="btn-empty-state-location" style="border-color: var(--border-color, #D9E1EA);">
+                        <i class="bi bi-crosshair me-1"></i> Enable Location Access
+                    </button>
+                </div>`;
+            const btnEmptyState = document.getElementById('btn-empty-state-location');
+            if (btnEmptyState) btnEmptyState.addEventListener('click', handleLocationClick);
+            if (window.LanguageManager && window.LanguageManager.applyTranslations) {
+                window.LanguageManager.applyTranslations();
+            }
+            return;
+        }
+
+        let html = '';
+        hospitalsData.forEach(h => {
+            html += `
+            <div class="col-12">
+                <div class="card border-0 shadow-sm p-3 hospital-card" style="background: var(--bg-card, #FFFFFF); border-radius: 12px;">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between gap-3">
+                        <div class="d-flex gap-3">
+                            <div class="d-flex align-items-center justify-content-center rounded" style="width: 48px; height: 48px; background: #E8F5E9; color: #2E7D5B;">
+                                <i class="bi bi-hospital fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1" style="color: var(--text-main, #172033); font-size: 1.1rem;">${h.name}</h6>
+                                <p class="small mb-2" style="color: var(--text-secondary, #536174);"><i class="bi bi-geo-alt me-1 text-danger"></i>${h.address}</p>
+                                <div class="d-flex flex-wrap gap-2 mb-2" style="font-size:0.75rem;">
+                                    ${h.phone ? `<span class="badge" style="background: var(--bg-surface-elevated, #F1F5F9); color: var(--text-secondary, #536174); border: 1px solid var(--border-color, #D9E1EA);"><i class="bi bi-telephone me-1"></i>${h.phone}</span>` : ''}
+                                    ${h.opening_hours ? `<span class="badge" style="background: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2;"><i class="bi bi-clock me-1"></i>${h.opening_hours}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column align-items-sm-end justify-content-between gap-2">
+                            <span class="badge px-3 py-1 fw-semibold" style="font-size: 0.8rem; background: #E0F2F1; color: #00695C; border: 1px solid #B2DFDB;">
+                                <i class="bi bi-signpost-split me-1"></i>${h.distance_km} <span data-i18n="hosp_km_away">km away</span>
+                            </span>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-sm btn-outline-primary" data-i18n="hosp_directions" href="${(h.lat && h.lng) ? `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lng}` : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(((h.name || '') + ', ' + (h.address || '')).trim())}`}" style="border-radius: 6px;" target="_blank" title="Get turn-by-turn route on Google Maps">
+                                    <i class="bi bi-sign-turn-right-fill me-1"></i> Directions / How to Reach
+                                </a>
+                                ${h.db_id ? `
+                                <a class="btn btn-sm btn-outline-primary" href="/hospitals/doctors/${h.db_id}">
+                                    <i class="bi bi-people me-1"></i> View Doctors
+                                </a>
+                                <a class="btn btn-sm text-white fw-medium" href="/appointments/book?hospital_id=${h.db_id}" style="background-color: var(--primary, #1769AA);">
+                                    <i class="bi bi-calendar-plus me-1"></i> Book Appointment
+                                </a>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+
+        if (window.LanguageManager && window.LanguageManager.applyTranslations) {
+            window.LanguageManager.applyTranslations();
+        }
+    }
+
+    function handleLocationClick() {
+        const loadingOverlay = document.getElementById('hospital-loading-state');
+        if (loadingOverlay) loadingOverlay.classList.remove('d-none');
+        
+        if (!navigator.geolocation) {
+            if (loadingOverlay) loadingOverlay.classList.add('d-none');
+            alert(getText("hosp_err_geo_unsupported", "Geolocation is not supported by this browser."));
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                fetch("{{ url_for('hospitals.search_api') }}", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ lat: lat, lng: lng, mode: 'current' })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (loadingOverlay) loadingOverlay.classList.add('d-none');
+                    if (data.error) {
+                        alert(getText("hosp_err_no_loc_address", data.error));
+                    } else {
+                        renderHospitalsUI(data.user_coords, data.hospitals, data.search_location);
+                    }
+                })
+                .catch(err => {
+                    if (loadingOverlay) loadingOverlay.classList.add('d-none');
+                    window.location.href = `{{ url_for('hospitals.index') }}?lat=${lat}&lng=${lng}&mode=current`;
+                });
+            },
+            function(error) {
+                if (loadingOverlay) loadingOverlay.classList.add('d-none');
+                let message = getText("hosp_err_unable_access", "Unable to access your current location.");
+                if (error.code === error.PERMISSION_DENIED) {
+                    message = getText("hosp_err_loc_denied", "Location access was denied. Please allow location permissions in your browser settings or search by address.");
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    message = getText("hosp_err_loc_unavailable", "Location information is unavailable. Please check your device location settings or enter an address manually.");
+                } else if (error.code === error.TIMEOUT) {
+                    message = getText("hosp_err_loc_timeout", "Location request timed out. Please try again or search by address.");
+                }
+                alert(message);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
+
+    const btnUseCurrent = document.getElementById('btn-use-current-location');
+    if (btnUseCurrent) {
+        btnUseCurrent.addEventListener('click', function() {
+            showNearbyLocationSection = true;
+            updateNearbyLocationSectionVisibility();
+            handleLocationClick();
+        });
+    }
+
+    const btnEmptyState = document.getElementById('btn-empty-state-location');
+    if (btnEmptyState) {
+        btnEmptyState.addEventListener('click', function() {
+            showNearbyLocationSection = true;
+            updateNearbyLocationSectionVisibility();
+            handleLocationClick();
+        });
+    }
+
+    const searchForm = document.getElementById('hospital-search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            showNearbyLocationSection = true;
+            updateNearbyLocationSectionVisibility();
+            e.preventDefault();
+            const inputVal = document.getElementById('hospital-location-input')?.value?.trim();
+            if (!inputVal) return;
+
+            const loadingOverlay = document.getElementById('hospital-loading-state');
+            if (loadingOverlay) loadingOverlay.classList.remove('d-none');
+
+            fetch("{{ url_for('hospitals.search_api') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ location: inputVal, mode: 'manual' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (loadingOverlay) loadingOverlay.classList.add('d-none');
+                if (data.error) {
+                    alert(getText("hosp_err_no_loc_address", data.error));
+                } else {
+                    renderHospitalsUI(data.user_coords, data.hospitals, data.search_location);
+                }
+            })
+            .catch(err => {
+                if (loadingOverlay) loadingOverlay.classList.add('d-none');
+                searchForm.submit();
+            });
+        });
+    }
+
+    window.addEventListener("languageChanged", function() {
+        if (window.LanguageManager && window.LanguageManager.applyTranslations) {
+            window.LanguageManager.applyTranslations();
+        }
+    });
+
+    // =========================================================================
+    // FIND A HOSPITAL WITH AI: AGENTIC AI + VERIFIED RAG WORKFLOW
+    // =========================================================================
+    let currentAIResults = { hospitals: [], doctors: [] };
+    let activeDoctorFilter = null;
+
+    window.switchAITab = function(tab) {
+        const hospBtn = document.getElementById('tab-hospitals-btn');
+        const docBtn = document.getElementById('tab-doctors-btn');
+        const hospView = document.getElementById('ai-hospitals-view');
+        const docView = document.getElementById('ai-doctors-view');
+
+        if (tab === 'hospitals') {
+            if (hospBtn) hospBtn.classList.add('active');
+            if (docBtn) docBtn.classList.remove('active');
+            if (hospView) hospView.classList.remove('d-none');
+            if (docView) docView.classList.add('d-none');
+        } else {
+            if (docBtn) docBtn.classList.add('active');
+            if (hospBtn) hospBtn.classList.remove('active');
+            if (docView) docView.classList.remove('d-none');
+            if (hospView) hospView.classList.add('d-none');
+        }
+    };
+
+    window.filterDoctorsByHospital = function(hospitalName) {
+        activeDoctorFilter = hospitalName;
+        renderDoctorCards(currentAIResults.doctors, hospitalName);
+        window.switchAITab('doctors');
+        const docView = document.getElementById('ai-results-container');
+        if (docView) docView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    function setStepState(stepNum, state) {
+        const stepEl = document.getElementById(`ai-step-${stepNum}`);
+        if (!stepEl) return;
+        const iconSpan = stepEl.querySelector('.ai-step-icon');
+
+        stepEl.classList.remove('active', 'completed');
+        if (state === 'active') {
+            stepEl.classList.add('active');
+            if (iconSpan) iconSpan.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
+        } else if (state === 'completed') {
+            stepEl.classList.add('completed');
+            if (iconSpan) iconSpan.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+        } else {
+            if (iconSpan) iconSpan.innerHTML = '<i class="bi bi-circle text-muted"></i>';
+        }
+    }
+
+    function runStepperAnimation(callback) {
+        const stepper = document.getElementById('ai-agent-stepper');
+        const badge = document.getElementById('ai-stepper-percentage');
+        if (stepper) stepper.classList.remove('d-none');
+
+        // Step 1: Understanding your request...
+        setStepState(1, 'active');
+        setStepState(2, 'pending');
+        setStepState(3, 'pending');
+        setStepState(4, 'pending');
+        if (badge) badge.textContent = "Analyzing query...";
+
+        setTimeout(() => {
+            // Step 2: Searching hospitals...
+            setStepState(1, 'completed');
+            setStepState(2, 'active');
+            if (badge) badge.textContent = "Searching RAG...";
+
+            setTimeout(() => {
+                // Step 3: Finding relevant doctors...
+                setStepState(2, 'completed');
+                setStepState(3, 'active');
+                if (badge) badge.textContent = "Matching specialists...";
+
+                setTimeout(() => {
+                    // Step 4: Preparing recommendations...
+                    setStepState(3, 'completed');
+                    setStepState(4, 'active');
+                    if (badge) badge.textContent = "Finalizing...";
+
+                    setTimeout(() => {
+                        setStepState(4, 'completed');
+                        if (badge) {
+                            badge.textContent = "100% Verified";
+                            badge.className = "badge bg-success text-white";
+                        }
+                        if (typeof callback === 'function') callback();
+                    }, 400);
+                }, 400);
+            }, 400);
+        }, 400);
+    }
+
+    function renderHospitalCards(hospitals, locationName, emptyMessage) {
+        const grid = document.getElementById('ai-hospital-cards-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        if (!hospitals || hospitals.length === 0) {
+            const locText = emptyMessage || (locationName ? `No hospitals found in ${locationName}.` : "No hospitals found matching this criteria.");
+            grid.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="bi bi-hospital fs-1 text-muted mb-2 d-block"></i>
+                    <h6 class="fw-bold text-dark">${locText}</h6>
+                    <p class="small text-muted mb-0">Please check the location name or try searching for another city.</p>
+                </div>
+            `;
+            return;
+        }
+
+        hospitals.forEach(h => {
+            const hName = h.name || h.hospital_name || 'Cancer Hospital';
+            const city = h.city || '';
+            const state = h.state || '';
+            const address = h.address || '';
+            const services = h.services || ["Advanced Cancer Surgery", "Medical Oncology", "Radiation Oncology"];
+            const docCount = h.verified_doctors_count || (h.doctors ? h.doctors.length : 0);
+            const bookUrl = `{{ url_for('appointments.book') }}${h.id ? '?hospital_id=' + h.id : ''}`;
+            const hLat = h.lat !== undefined ? h.lat : h.latitude;
+            const hLng = h.lng !== undefined ? h.lng : h.longitude;
+            let directionsUrl = '';
+            if (hLat && hLng) {
+                directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${hLat},${hLng}`;
+            } else {
+                const destString = `${hName}, ${address ? address + ', ' : ''}${city ? city + ', ' : ''}${state}`.replace(/,\s*,/g, ',').trim();
+                directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destString)}`;
+            }
+
+            // Rating: ONLY when verified (do not invent data!)
+            let ratingBadge = '';
+            if (h.rating && h.rating > 0) {
+                ratingBadge = `<span class="badge" style="background:#FFF8E1; color:#F57F17; border:1px solid #FFE082;"><i class="bi bi-star-fill me-1"></i>${h.rating} (Verified Rating)</span>`;
+            } else if (h.verified_accreditation) {
+                ratingBadge = `<span class="badge" style="background:#E8F5E9; color:#2E7D5B; border:1px solid #C8E6C9;"><i class="bi bi-patch-check-fill me-1"></i>${h.verified_accreditation}</span>`;
+            }
+
+            const servicesBadges = services.map(s => `
+                <span class="badge me-1 mb-1" style="background: var(--bg-surface-elevated, #F1F5F9); color: var(--text-secondary, #536174); border: 1px solid var(--border-color, #D9E1EA); font-size: 0.72rem;">
+                    ${s}
+                </span>
+            `).join('');
+
+            const col = document.createElement('div');
+            col.className = 'col-12';
+            col.innerHTML = `
+                <div class="card border-0 shadow-sm p-3 hospital-card" style="background: var(--bg-card, #FFFFFF); border-radius: 12px; border: 1px solid var(--border-color, #D9E1EA);">
+                    <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                        <div class="d-flex gap-3">
+                            <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0" style="width: 52px; height: 52px; background: #E3F2FD; color: #1769AA;">
+                                <i class="bi bi-hospital fs-3"></i>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                    <h6 class="fw-bold mb-0 text-dark" style="font-size: 1.15rem;">${hName}</h6>
+                                    <span class="badge px-2.5 py-1 fw-semibold" style="background: #E8F5E9; color: #2E7D5B; border: 1px solid #C8E6C9; font-size: 0.72rem;">
+                                        <i class="bi bi-patch-check-fill me-1"></i>${docCount} Verified Doctors
+                                    </span>
+                                    ${ratingBadge}
+                                </div>
+                                <p class="small text-muted mb-2">
+                                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+                                    <strong>${city}${city && state ? ', ' : ''}${state}</strong>
+                                    ${address ? ` — <span class="text-secondary">${address}</span>` : ''}
+                                </p>
+                                <div class="mb-2">
+                                    <span class="small fw-semibold text-secondary d-inline-block me-1" style="font-size: 0.75rem;">Specialties &amp; Services:</span>
+                                    <div class="d-inline-flex flex-wrap align-items-center">${servicesBadges}</div>
+                                </div>
+                                ${h.phone ? `<div class="small text-muted"><i class="bi bi-telephone-fill me-1 text-primary"></i>${h.phone}</div>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-row flex-md-column justify-content-between align-items-end gap-2 flex-shrink-0">
+                            <a href="${directionsUrl}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap" style="border-radius: 6px;" title="Get route and navigation on Google Maps">
+                                <i class="bi bi-sign-turn-right-fill me-1"></i> Directions
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-sage text-nowrap" onclick="filterDoctorsByHospital('${hName.replace(/'/g, "\\'")}')">
+                                    <i class="bi bi-people me-1"></i> View Doctors
+                                </button>
+                                <a href="${bookUrl}" class="btn btn-sm btn-sage fw-medium text-nowrap">
+                                    <i class="bi bi-calendar-check me-1"></i> Book Appointment
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(col);
+        });
+    }
+
+    function renderDoctorCards(doctors, hospitalFilter = null) {
+        const grid = document.getElementById('ai-doctor-cards-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        let filtered = doctors || [];
+        if (hospitalFilter) {
+            filtered = filtered.filter(d => (d.hospital_name || '').toLowerCase() === hospitalFilter.toLowerCase());
+        }
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="bi bi-person-x fs-1 text-muted mb-2 d-block"></i>
+                    <h6 class="fw-bold" style="color: var(--text-main);">No doctors found${hospitalFilter ? ' for ' + hospitalFilter : ''}</h6>
+                    ${hospitalFilter ? `<button class="btn btn-sm btn-outline-sage mt-2" onclick="filterDoctorsByHospital(null)"><i class="bi bi-arrow-clockwise me-1"></i>Show All Doctors</button>` : ''}
+                </div>
+            `;
+            return;
+        }
+
+        if (hospitalFilter) {
+            const filterAlert = document.createElement('div');
+            filterAlert.className = 'col-12';
+            filterAlert.innerHTML = `
+                <div class="alert border py-2 px-3 small d-flex justify-content-between align-items-center mb-1" style="background: var(--bg-main); border-color: #C9DACB !important; color: var(--text-main);">
+                    <span>Showing specialists at <strong>${hospitalFilter}</strong></span>
+                    <button class="btn btn-sm btn-link p-0 text-decoration-none" style="color: var(--primary);" onclick="filterDoctorsByHospital(null)">Show All Doctors</button>
+                </div>
+            `;
+            grid.appendChild(filterAlert);
+        }
+
+        filtered.forEach(doc => {
+            const docName = doc.name || doc.doctor_name || 'Specialist';
+            const spec = doc.specialization || 'Medical Specialist';
+            const hospName = doc.hospital_name || 'Hospital Center';
+            const docLocation = doc.location || (doc.city ? `${doc.city}, ${doc.state || ''}`.trim().replace(/,$/, '') : 'India');
+            const docQual = doc.qualification_short || doc.qualification || 'MBBS, MD';
+            const docExp = doc.experience_years ? `${doc.experience_years} years` : '10+ years';
+            const docAvail = doc.availability_days || 'Mon, Wed, Fri';
+            const docFee = doc.formatted_fee || (doc.consultation_fee ? `₹${doc.consultation_fee} per consultation` : 'Consultation fee not available');
+            const bookUrl = `{{ url_for('appointments.book') }}?hospital_id=${doc.hospital_id || ''}&doctor_id=${doc.id || ''}`;
+
+            const col = document.createElement('div');
+            col.className = 'col-12 col-md-6';
+            col.innerHTML = `
+                <div class="card p-4 h-100 shadow-sm" style="border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-card); transition: transform 0.2s, box-shadow 0.2s;">
+                    <div class="d-flex flex-column h-100 justify-content-between">
+                        <div>
+                            <!-- Header: Doctor Name & Specialization -->
+                            <div class="d-flex align-items-start gap-3 mb-3">
+                                <div class="doctor-avatar-circle">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="fw-bold mb-1" style="color: var(--text-main); font-size: 1.15rem;">${docName}</h5>
+                                    <span class="badge-specialty d-inline-block">${spec}</span>
+                                </div>
+                            </div>
+
+                            <!-- Hospital Name & Location -->
+                            <div class="mb-3 pb-2.5 border-bottom" style="border-color: var(--border-color) !important;">
+                                <div class="fw-semibold small mb-1" style="color: var(--text-main);">
+                                    <i class="bi bi-building me-1" style="color: var(--primary);"></i> ${hospName}
+                                </div>
+                                <div class="small" style="color: var(--text-muted);">
+                                    <i class="bi bi-geo-alt me-1" style="color: var(--primary);"></i> ${docLocation}
+                                </div>
+                            </div>
+
+                            <!-- Credentials & Availability -->
+                            <div class="mb-3 small">
+                                <div class="d-flex justify-content-between mb-1.5">
+                                    <span style="color: var(--text-muted);">Qualification:</span>
+                                    <span class="fw-medium text-end ms-2" style="color: var(--text-main);">${docQual}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span style="color: var(--text-muted);">Experience:</span>
+                                    <span class="fw-medium" style="color: var(--text-main);">${docExp}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span style="color: var(--text-muted);">Available:</span>
+                                    <span class="badge-days">
+                                        <i class="bi bi-calendar3 me-1"></i> ${docAvail}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top" style="border-color: var(--border-color) !important;">
+                                    <span style="color: var(--text-muted);">Consultation Fee:</span>
+                                    <span class="fw-bold fs-6" style="color: var(--primary);">${docFee}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 pt-2 mt-auto">
+                            <button type="button" class="btn btn-outline-sage btn-sm px-3 py-2 fw-medium flex-grow-1" onclick="showDocProfileModal(${doc.id})">
+                                <i class="bi bi-person-badge me-1"></i> View Profile
+                            </button>
+                            <a href="${bookUrl}" class="btn btn-sage btn-sm px-3 py-2 fw-medium flex-grow-1 text-center text-decoration-none">
+                                <i class="bi bi-calendar-check me-1"></i> Book Appointment
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(col);
+        });
+    }
+
+    window.showDocProfileModal = function(docId) {
+        if (!currentAIResults || !currentAIResults.doctors) return;
+        const doc = currentAIResults.doctors.find(d => d.id === docId);
+        if (!doc) return;
+
+        const docName = doc.name || doc.doctor_name || 'Specialist';
+        const spec = doc.specialization || 'Medical Specialist';
+        const hospName = doc.hospital_name || 'Hospital Center';
+        const docLocation = doc.location || (doc.city ? `${doc.city}, ${doc.state || ''}`.trim().replace(/,$/, '') : 'India');
+        const docQual = doc.qualification || doc.qualification_short || 'MBBS, MD';
+        const docExp = doc.experience_years ? `${doc.experience_years} years of clinical practice` : '10+ years';
+        const docAvail = doc.availability_days || 'Mon, Wed, Fri';
+        const docHours = doc.availability_time || '09:00 AM – 01:00 PM';
+        const docFee = doc.formatted_fee || (doc.consultation_fee ? `₹${doc.consultation_fee} per consultation` : 'Consultation fee not available');
+        const bookUrl = `{{ url_for('appointments.book') }}?hospital_id=${doc.hospital_id || ''}&doctor_id=${doc.id || ''}`;
+        const bio = doc.bio || doc.profile || 'Consultant specialist providing comprehensive diagnostic and clinical consultations.';
+
+        let modalEl = document.getElementById('aiDocProfileModal');
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.className = 'modal fade';
+            modalEl.id = 'aiDocProfileModal';
+            modalEl.tabIndex = -1;
+            modalEl.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow" style="border-radius: 12px; background: var(--bg-card);">
+                        <div class="modal-header border-0 pb-0">
+                            <h5 class="modal-title fw-bold" style="color: var(--text-main);">Doctor Profile</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body pt-3" id="aiDocProfileModalBody"></div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                            <a id="aiDocProfileModalBookBtn" class="btn btn-sage px-4" href="#">
+                                <i class="bi bi-calendar-check me-1"></i> Book Appointment
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalEl);
+        }
+
+        const bodyEl = document.getElementById('aiDocProfileModalBody');
+        bodyEl.innerHTML = `
+            <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                <div class="doctor-avatar-circle" style="width: 52px; height: 52px; font-size: 1.5rem;">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-0" style="color: var(--text-main);">${docName}</h5>
+                    <span class="badge-specialty d-inline-block mt-1">${spec}</span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-muted);">Hospital Affiliation</div>
+                <div class="fw-medium" style="color: var(--text-main);">${hospName}</div>
+                <div class="small" style="color: var(--text-muted);"><i class="bi bi-geo-alt me-1" style="color: var(--primary);"></i>${docLocation}</div>
+            </div>
+
+            <div class="mb-3">
+                <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-muted);">Qualifications &amp; Practice</div>
+                <div class="fw-medium" style="color: var(--text-main);">${docQual}</div>
+                <div class="small" style="color: var(--text-muted);">${docExp}</div>
+            </div>
+
+            <div class="mb-3">
+                <div class="small fw-semibold text-uppercase" style="letter-spacing: 0.5px; color: var(--text-muted);">Specialist Overview</div>
+                <p class="small mb-0" style="color: var(--text-main); line-height: 1.5;">${bio}</p>
+            </div>
+
+            <div class="p-3 rounded-3 mb-2" style="background: var(--bg-main); border: 1px solid #D6E3D7;">
+                <div class="d-flex justify-content-between small mb-1.5">
+                    <span style="color: var(--text-muted);">Consultation Days:</span>
+                    <span class="fw-semibold" style="color: var(--text-main);">${docAvail}</span>
+                </div>
+                <div class="d-flex justify-content-between small mb-1.5">
+                    <span style="color: var(--text-muted);">Available Hours:</span>
+                    <span class="fw-semibold" style="color: var(--text-main);">${docHours}</span>
+                </div>
+                <div class="d-flex justify-content-between small">
+                    <span style="color: var(--text-muted);">Consultation Fee:</span>
+                    <span class="fw-bold" style="color: var(--primary);">${docFee}</span>
+                </div>
+            </div>
+        `;
+
+        const bookBtn = document.getElementById('aiDocProfileModalBookBtn');
+        if (bookBtn) bookBtn.href = bookUrl;
+
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+    };
+
+    function runAISearch(userQuery) {
+        if (!userQuery || !userQuery.trim()) return;
+        const q = userQuery.trim();
+
+        // 1. Intent detection from Speech-to-Text / text query before rendering
+        showNearbyLocationSection = detectNearbyLocationIntent(q);
+        updateNearbyLocationSectionVisibility();
+
+        const resultsContainer = document.getElementById('ai-results-container');
+        if (resultsContainer) resultsContainer.classList.add('d-none');
+
+        const nonDiagAlert = document.getElementById('ai-non-diagnostic-alert');
+        if (nonDiagAlert) nonDiagAlert.classList.add('d-none');
+
+        runStepperAnimation(() => {
+            fetch("/hospitals/api/ai_search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    query: q,
+                    location: "{{ search_location or registered_address or '' }}",
+                    language: window.VoiceAssistant ? window.VoiceAssistant.getCurrentLanguage() : 'en'
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    currentAIResults = {
+                        hospitals: data.hospitals || [],
+                        doctors: data.doctors || []
+                    };
+                    document.getElementById('ai-hosp-count').textContent = currentAIResults.hospitals.length;
+                    document.getElementById('ai-doc-count').textContent = currentAIResults.doctors.length;
+
+                    renderHospitalCards(currentAIResults.hospitals, data.location || data.detected_city || data.detected_state, data.message);
+                    renderDoctorCards(currentAIResults.doctors);
+                    window.switchAITab('hospitals');
+
+                    if (resultsContainer) {
+                        resultsContainer.classList.remove('d-none');
+                        resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+
+                    // Sync intent flag: ONLY nearby intent queries activate showNearbyLocationSection
+                    if (data.is_nearby !== undefined) {
+                        showNearbyLocationSection = Boolean(data.is_nearby);
+                    } else {
+                        showNearbyLocationSection = detectNearbyLocationIntent(q);
+                    }
+
+                    // Enforce lower location section visibility based on showNearbyLocationSection
+                    updateNearbyLocationSectionVisibility();
+                    if (showNearbyLocationSection) {
+                        const nearbySection = document.getElementById('nearby-location-section');
+                        if (nearbySection) {
+                            setTimeout(() => {
+                                nearbySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 350);
+                        }
+                    }
+                } else {
+                    alert(data.error || "Unable to complete hospital search.");
+                }
+            })
+            .catch(err => {
+                console.error("AI Search Error:", err);
+                alert("Failed to communicate with the Hospital Agent. Please try again.");
+            });
+        });
+    }
+
+    function uploadAIPdf(file) {
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            alert("Please select a valid PDF file.");
+            return;
+        }
+
+        // PDF upload is clinical report extraction, not a nearby location intent
+        showNearbyLocationSection = false;
+        updateNearbyLocationSectionVisibility();
+
+        const resultsContainer = document.getElementById('ai-results-container');
+        if (resultsContainer) resultsContainer.classList.add('d-none');
+
+        const pdfBtnLabel = document.getElementById('ai-pdf-btn-label');
+        if (pdfBtnLabel) pdfBtnLabel.textContent = `Analyzing ${file.name.substring(0, 16)}...`;
+
+        runStepperAnimation(() => {
+            const formData = new FormData();
+            formData.append('pdf', file);
+            formData.append('location', "{{ search_location or registered_address or '' }}");
+
+            fetch("/hospitals/api/upload_pdf", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (pdfBtnLabel) pdfBtnLabel.textContent = '📄 Upload PDF';
+                if (data.success) {
+                    currentAIResults = {
+                        hospitals: data.hospitals || [],
+                        doctors: data.doctors || []
+                    };
+                    document.getElementById('ai-hosp-count').textContent = currentAIResults.hospitals.length;
+                    document.getElementById('ai-doc-count').textContent = currentAIResults.doctors.length;
+
+                    // Non-diagnostic advisory message
+                    const nonDiagAlert = document.getElementById('ai-non-diagnostic-alert');
+                    const nonDiagText = document.getElementById('ai-non-diagnostic-text');
+                    if (nonDiagAlert && nonDiagText && data.non_diagnostic_message) {
+                        nonDiagText.textContent = data.non_diagnostic_message;
+                        nonDiagAlert.classList.remove('d-none');
+                    }
+
+                    renderHospitalCards(currentAIResults.hospitals);
+                    renderDoctorCards(currentAIResults.doctors);
+                    window.switchAITab('hospitals');
+
+                    if (resultsContainer) {
+                        resultsContainer.classList.remove('d-none');
+                        resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                } else {
+                    alert(data.error || data.non_diagnostic_message || "Could not extract recommendations from this PDF.");
+                }
+            })
+            .catch(err => {
+                if (pdfBtnLabel) pdfBtnLabel.textContent = '📄 Upload PDF';
+                console.error("PDF Upload Error:", err);
+                alert("Failed to upload report. Please check file format and try again.");
+            });
+        });
+    }
+
+    // =========================================================================
+    // EVENT LISTENERS FOR AI SPEECH AND PDF
+    // =========================================================================
+    // ROBUST SPEECH-TO-TEXT FOR HOSPITAL RECOMMENDATIONS
+    // =========================================================================
+    const btnSpeech = document.getElementById('btn-ai-speech');
+    const btnInputMic = document.getElementById('btn-ai-input-mic');
+    const speechStatusBar = document.getElementById('ai-speech-status-bar');
+    const transcriptInput = document.getElementById('ai-speech-transcript-input');
+    const btnSubmitQuery = document.getElementById('btn-ai-submit-query');
+    const speechMicIcon = document.getElementById('ai-speech-mic-icon');
+    const speechBtnLabel = document.getElementById('ai-speech-btn-label');
+    const speechStatusText = document.getElementById('ai-speech-status-text');
+    const speechPulseDot = document.getElementById('ai-speech-pulse-dot');
+    const micIndicator = document.getElementById('ai-input-mic-indicator');
+
+    let speechRecognizer = null;
+    let isListeningAI = false;
+    let hasSessionError = false;
+    let sessionSpokenText = "";
+
+    function escapeHtml(text) {
+        if (!text) return "";
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    window.setAndRunQuery = function(query) {
+        if (!query) return;
+        if (transcriptInput) transcriptInput.value = query;
+        if (speechStatusText) speechStatusText.innerHTML = `<strong>Selected:</strong> &ldquo;${escapeHtml(query)}&rdquo;`;
+        runAISearch(query);
+    };
+
+    function setSpeechUIState(state, message) {
+        if (state === 'listening') {
+            isListeningAI = true;
+            if (speechMicIcon) speechMicIcon.className = "bi bi-mic-fill fs-5 text-white ai-pulse-mic";
+            if (speechBtnLabel) speechBtnLabel.textContent = "🎙 Listening...";
+            if (btnSpeech) {
+                btnSpeech.style.backgroundColor = "var(--primary)";
+                btnSpeech.style.borderColor = "var(--primary)";
+            }
+            if (speechPulseDot) speechPulseDot.className = "spinner-grow spinner-grow-sm text-success";
+            if (micIndicator) micIndicator.className = "bi bi-mic-fill text-danger ai-pulse-mic";
+            if (btnInputMic) btnInputMic.title = "Listening... Click to stop";
+            if (speechStatusText) speechStatusText.innerHTML = message || '<strong>Listening...</strong> Speak your requirement (e.g. <em>&ldquo;Hospitals in Kolkata&rdquo;</em>)';
+            if (speechStatusBar) {
+                speechStatusBar.style.background = "#F4F7F4";
+                speechStatusBar.style.borderColor = "#C9DACB";
+            }
+        } else if (state === 'recognized') {
+            isListeningAI = false;
+            if (speechMicIcon) speechMicIcon.className = "bi bi-check-circle-fill fs-5 text-white";
+            if (speechBtnLabel) speechBtnLabel.textContent = "🎙 Speak your requirement";
+            if (btnSpeech) {
+                btnSpeech.style.backgroundColor = "var(--primary)";
+                btnSpeech.style.borderColor = "var(--primary)";
+            }
+            if (speechPulseDot) speechPulseDot.className = "spinner-grow spinner-grow-sm text-success";
+            if (micIndicator) micIndicator.className = "bi bi-check-circle-fill text-success";
+            if (btnInputMic) btnInputMic.title = "Speech Recognized";
+            if (speechStatusText) speechStatusText.innerHTML = message || '<strong>Recognized!</strong> Preparing recommendations...';
+            if (speechStatusBar) {
+                speechStatusBar.style.background = "#F4F7F4";
+                speechStatusBar.style.borderColor = "#C9DACB";
+            }
+        } else if (state === 'error') {
+            isListeningAI = false;
+            if (speechMicIcon) speechMicIcon.className = "bi bi-mic-fill fs-5 text-white";
+            if (speechBtnLabel) speechBtnLabel.textContent = "🎙 Speak your requirement";
+            if (btnSpeech) {
+                btnSpeech.style.backgroundColor = "var(--primary)";
+                btnSpeech.style.borderColor = "var(--primary)";
+            }
+            if (speechPulseDot) speechPulseDot.className = "spinner-grow spinner-grow-sm text-secondary";
+            if (micIndicator) micIndicator.className = "bi bi-mic-fill text-secondary";
+            if (btnInputMic) btnInputMic.title = "Voice Search (Click to speak)";
+            if (speechStatusText) speechStatusText.innerHTML = message || 'Microphone error. You can type your query below and click Search:';
+            if (speechStatusBar) {
+                speechStatusBar.style.background = "var(--bg-main)";
+                speechStatusBar.style.borderColor = "var(--border-color)";
+            }
+        } else { // idle
+            isListeningAI = false;
+            if (speechMicIcon) speechMicIcon.className = "bi bi-mic-fill fs-5 text-white";
+            if (speechBtnLabel) speechBtnLabel.textContent = "🎙 Speak your requirement";
+            if (btnSpeech) {
+                btnSpeech.style.backgroundColor = "var(--primary)";
+                btnSpeech.style.borderColor = "var(--primary)";
+            }
+            if (speechPulseDot) speechPulseDot.className = "spinner-grow spinner-grow-sm text-secondary";
+            if (micIndicator) micIndicator.className = "bi bi-mic-fill text-secondary";
+            if (btnInputMic) btnInputMic.title = "Voice Search (Click to speak)";
+            if (message && speechStatusText) {
+                speechStatusText.innerHTML = message;
+            } else if (speechStatusText) {
+                speechStatusText.innerHTML = "Speak requirement via mic above, or type below:";
+            }
+            if (speechStatusBar) {
+                speechStatusBar.style.background = "var(--bg-main)";
+                speechStatusBar.style.borderColor = "var(--border-color)";
+            }
+        }
+    }
+
+    function stopAISpeechListening(updateUI = true) {
+        if (speechRecognizer) {
+            try {
+                if (typeof speechRecognizer.abort === 'function') {
+                    speechRecognizer.abort();
+                } else {
+                    speechRecognizer.stop();
+                }
+            } catch (e) {}
+            speechRecognizer = null;
+        }
+        isListeningAI = false;
+        if (updateUI) {
+            setSpeechUIState('idle');
+        }
+    }
+
+    function launchSpeechEngine(SpeechRec) {
+        try {
+            if (speechRecognizer) {
+                try { speechRecognizer.abort(); } catch(e){}
+                speechRecognizer = null;
+            }
+
+            speechRecognizer = new SpeechRec();
+            const currentLang = window.VoiceAssistant ? window.VoiceAssistant.getCurrentLanguage() : 'en';
+            const langCodes = { 'en': 'en-IN', 'hi': 'hi-IN', 'kn': 'kn-IN', 'te': 'te-IN', 'ta': 'ta-IN' };
+            speechRecognizer.lang = langCodes[currentLang] || 'en-IN';
+            speechRecognizer.continuous = false;
+            speechRecognizer.interimResults = true;
+            speechRecognizer.maxAlternatives = 1;
+
+            hasSessionError = false;
+            sessionSpokenText = "";
+
+            speechRecognizer.onstart = function() {
+                isListeningAI = true;
+                hasSessionError = false;
+                setSpeechUIState('listening', '<strong>Listening...</strong> Speak your requirement (e.g. <em>&ldquo;Hospitals in Kolkata&rdquo;</em>)');
+                if (transcriptInput) {
+                    transcriptInput.placeholder = "Listening... Speak your requirement now...";
+                    transcriptInput.focus();
+                }
+            };
+
+            speechRecognizer.onresult = function(event) {
+                let interim = "";
+                let finalChunk = "";
+                for (let i = 0; i < event.results.length; ++i) {
+                    const res = event.results[i];
+                    if (res.isFinal) {
+                        finalChunk += res[0].transcript;
+                    } else {
+                        interim += res[0].transcript;
+                    }
+                }
+                const liveText = (finalChunk || interim).trim();
+                if (liveText) {
+                    sessionSpokenText = liveText;
+                    if (transcriptInput) {
+                        transcriptInput.value = liveText;
+                    }
+                    setSpeechUIState('listening', `<strong>Listening:</strong> &ldquo;${escapeHtml(liveText)}&rdquo;`);
+                }
+            };
+
+            speechRecognizer.onerror = function(event) {
+                console.warn("Speech recognition error:", event.error);
+                hasSessionError = true;
+                isListeningAI = false;
+
+                let errText = "Microphone error. You can type your requirement below and click Search:";
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    errText = `<span class="d-inline-flex align-items-center gap-2 small" style="color: var(--text-main);"><i class="bi bi-mic-mute-fill text-danger"></i> Microphone access is blocked. Allow microphone access in your browser settings to use voice search. <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" style="font-size: 0.75rem;" onclick="toggleAISpeechListening()">Try Again</button></span>`;
+                } else if (event.error === 'no-speech') {
+                    errText = `<span class="small" style="color: var(--text-muted);">No speech detected. <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" style="font-size: 0.75rem;" onclick="toggleAISpeechListening()">Try Again</button> or type below:</span>`;
+                } else if (event.error === 'network') {
+                    errText = `<span class="small" style="color: var(--text-muted);">Network speech timeout. Please check your internet connection or type below:</span>`;
+                } else if (event.error === 'audio-capture') {
+                    errText = `<span class="small" style="color: var(--text-muted);">No microphone found. Please connect a microphone or type below:</span>`;
+                } else if (event.error === 'aborted') {
+                    setSpeechUIState('idle', 'Speak requirement via mic above, or type below:');
+                    return;
+                }
+                setSpeechUIState('error', errText);
+                if (transcriptInput) {
+                    transcriptInput.placeholder = "Speak your requirement or type here (e.g. 'Hospitals in Kolkata')...";
+                    transcriptInput.focus();
+                }
+            };
+
+            speechRecognizer.onend = function() {
+                isListeningAI = false;
+                speechRecognizer = null;
+
+                if (transcriptInput) {
+                    transcriptInput.placeholder = "Speak your requirement or type here (e.g. 'Find cancer hospitals in Mumbai')...";
+                }
+
+                if (hasSessionError) {
+                    return;
+                }
+
+                const finalQuery = (sessionSpokenText || (transcriptInput ? transcriptInput.value : "")).trim();
+                if (finalQuery) {
+                    if (transcriptInput) transcriptInput.value = finalQuery;
+                    setSpeechUIState('recognized', `<strong>Recognized:</strong> &ldquo;${escapeHtml(finalQuery)}&rdquo;`);
+                    runAISearch(finalQuery);
+                } else {
+                    setSpeechUIState('idle');
+                }
+            };
+
+            speechRecognizer.start();
+        } catch (err) {
+            console.error("Failed to start speech recognizer:", err);
+            hasSessionError = true;
+            isListeningAI = false;
+            setSpeechUIState('error', "Could not initialize microphone. Please type your requirement below and click Search:");
+            if (transcriptInput) transcriptInput.focus();
+        }
+    }
+
+    function toggleAISpeechListening() {
+        // Stop header assistant if listening
+        if (window.VoiceAssistant && window.VoiceAssistant.isListening) {
+            window.VoiceAssistant.stopListening();
+        }
+
+        if (isListeningAI) {
+            hasSessionError = false;
+            stopAISpeechListening(false);
+            setSpeechUIState('idle', 'Speech input stopped. Click the microphone to speak again or type below:');
+            if (transcriptInput) {
+                transcriptInput.placeholder = "Speak your requirement or type here (e.g. 'Find cancer hospitals in Mumbai')...";
+            }
+            return;
+        }
+
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) {
+            setSpeechUIState('error', "<strong>Speech recognition is not supported in this browser.</strong> (Please use Google Chrome or Microsoft Edge). You can type your medical requirement below:");
+            if (transcriptInput) {
+                transcriptInput.focus();
+                transcriptInput.placeholder = "e.g. Find cancer hospitals in Mumbai...";
+            }
+            return;
+        }
+
+        setSpeechUIState('listening', '<strong>Requesting microphone...</strong> Please speak your requirement clearly.');
+        if (transcriptInput) transcriptInput.placeholder = "Listening... Speak your requirement now...";
+
+        launchSpeechEngine(SpeechRec);
+    }
+
+    if (btnSpeech) {
+        btnSpeech.addEventListener('click', toggleAISpeechListening);
+    }
+    if (btnInputMic) {
+        btnInputMic.addEventListener('click', toggleAISpeechListening);
+    }
+
+    if (btnSubmitQuery) {
+        btnSubmitQuery.addEventListener('click', function() {
+            const query = transcriptInput?.value?.trim();
+            if (query) runAISearch(query);
+        });
+    }
+
+    if (transcriptInput) {
+        transcriptInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = transcriptInput.value.trim();
+                if (query) runAISearch(query);
+            }
+        });
+    }
+
+    const btnPdfUpload = document.getElementById('btn-ai-pdf-upload');
+    const pdfFileInput = document.getElementById('ai-pdf-file-input');
+
+    if (btnPdfUpload && pdfFileInput) {
+        btnPdfUpload.addEventListener('click', function() {
+            pdfFileInput.click();
+        });
+
+        pdfFileInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                uploadAIPdf(e.target.files[0]);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+
